@@ -1,0 +1,127 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Updated color scheme for tropical jungle vibe */
+  --background: oklch(0.99 0.005 120); /* Soft cream white with hint of green */
+  --foreground: oklch(0.25 0.02 140); /* Deep forest green for text */
+  --card: oklch(0.97 0.01 130); /* Light sage card background */
+  --card-foreground: oklch(0.25 0.02 140); /* Deep forest green for card text */
+  --popover: oklch(0.99 0.005 120); /* Same as background */
+  --popover-foreground: oklch(0.25 0.02 140); /* Deep forest green */
+  --primary: oklch(0.45 0.15 150); /* Rich jungle green for primary actions */
+  --primary-foreground: oklch(0.99 0.005 120); /* Light text on primary */
+  --secondary: oklch(0.85 0.03 130); /* Soft sage for secondary elements */
+  --secondary-foreground: oklch(0.25 0.02 140); /* Dark text on secondary */
+  --muted: oklch(0.92 0.02 125); /* Very light sage for muted backgrounds */
+  --muted-foreground: oklch(0.55 0.02 140); /* Medium forest green for muted text */
+  --accent: oklch(0.65 0.18 160); /* Vibrant tropical green accent */
+  --accent-foreground: oklch(0.99 0.005 120); /* Light text on accent */
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.99 0.005 120);
+  --border: oklch(0.88 0.02 130); /* Soft sage border */
+  --input: oklch(0.95 0.01 125); /* Light sage input background */
+  --ring: oklch(0.45 0.15 150); /* Primary green for focus rings */
+  --chart-1: oklch(0.45 0.15 150); /* Primary jungle green */
+  --chart-2: oklch(0.65 0.18 160); /* Accent tropical green */
+  --chart-3: oklch(0.55 0.12 140); /* Medium jungle green */
+  --chart-4: oklch(0.75 0.08 130); /* Light sage green */
+  --chart-5: oklch(0.35 0.05 145); /* Dark forest green */
+  --radius: 0.75rem; /* Slightly more rounded for organic feel */
+  --sidebar: oklch(0.97 0.01 130);
+  --sidebar-foreground: oklch(0.25 0.02 140);
+  --sidebar-primary: oklch(0.45 0.15 150);
+  --sidebar-primary-foreground: oklch(0.99 0.005 120);
+  --sidebar-accent: oklch(0.85 0.03 130);
+  --sidebar-accent-foreground: oklch(0.25 0.02 140);
+  --sidebar-border: oklch(0.88 0.02 130);
+  --sidebar-ring: oklch(0.45 0.15 150);
+}
+
+.dark {
+  /* Dark mode with tropical jungle night theme */
+  --background: oklch(0.12 0.02 140); /* Deep jungle night */
+  --foreground: oklch(0.92 0.02 125); /* Light sage text */
+  --card: oklch(0.15 0.02 140); /* Slightly lighter jungle night for cards */
+  --card-foreground: oklch(0.92 0.02 125);
+  --popover: oklch(0.12 0.02 140);
+  --popover-foreground: oklch(0.92 0.02 125);
+  --primary: oklch(0.65 0.18 160); /* Bright tropical green for dark mode */
+  --primary-foreground: oklch(0.12 0.02 140); /* Dark text on bright primary */
+  --secondary: oklch(0.25 0.03 140); /* Dark sage secondary */
+  --secondary-foreground: oklch(0.92 0.02 125);
+  --muted: oklch(0.18 0.02 140); /* Muted jungle background */
+  --muted-foreground: oklch(0.65 0.02 130); /* Medium sage for muted text */
+  --accent: oklch(0.75 0.15 155); /* Lighter tropical accent for dark mode */
+  --accent-foreground: oklch(0.12 0.02 140);
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.92 0.02 125);
+  --border: oklch(0.22 0.02 140); /* Dark sage border */
+  --input: oklch(0.18 0.02 140); /* Dark input background */
+  --ring: oklch(0.65 0.18 160); /* Bright tropical green for focus */
+  --chart-1: oklch(0.65 0.18 160);
+  --chart-2: oklch(0.75 0.15 155);
+  --chart-3: oklch(0.55 0.12 150);
+  --chart-4: oklch(0.45 0.08 145);
+  --chart-5: oklch(0.85 0.05 130);
+  --sidebar: oklch(0.15 0.02 140);
+  --sidebar-foreground: oklch(0.92 0.02 125);
+  --sidebar-primary: oklch(0.65 0.18 160);
+  --sidebar-primary-foreground: oklch(0.12 0.02 140);
+  --sidebar-accent: oklch(0.25 0.03 140);
+  --sidebar-accent-foreground: oklch(0.92 0.02 125);
+  --sidebar-border: oklch(0.22 0.02 140);
+  --sidebar-ring: oklch(0.65 0.18 160);
+}
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
