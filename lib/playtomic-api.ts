@@ -87,7 +87,6 @@ export class PlaytomicAPI {
       const resources = await response.json()
       return resources
     } catch (error) {
-      console.error(`Error fetching resources for tenant ${tenantId}:`, error)
       return []
     }
   }
