@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useMemo, useRef } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Clock, MapPin, ExternalLink } from "lucide-react"
+import { Clock, Loader2, MapPin, ExternalLink } from "lucide-react"
 import type { TimeSlot } from "@/lib/playtomic-api"
 import { isUnmappedCourt } from "@/lib/court-names"
 
@@ -212,8 +212,27 @@ export default function PadelClient({
   const [selectedClub, setSelectedClub] = useState("all")
   const [selectedDuration, setSelectedDuration] = useState("60+")
 
-  // All 14 days are pre-fetched server-side — no client fetching needed
-  const timeSlots = initialSlotCache[selectedDate] ?? []
+  // Start with today's data pre-populated from the server; other dates fetched on demand
+  const [slotCache, setSlotCache] = useState<Record<string, TimeSlot[]>>(initialSlotCache)
+  const [loadingDate, setLoadingDate] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (slotCache[selectedDate] !== undefined) return
+    setLoadingDate(selectedDate)
+    const dateToFetch = selectedDate
+    fetch(`/api/playtomic/slots?date=${dateToFetch}`)
+      .then((r) => r.json())
+      .then((slots: TimeSlot[]) => {
+        setSlotCache((prev) => ({ ...prev, [dateToFetch]: slots }))
+      })
+      .catch(() => {
+        setSlotCache((prev) => ({ ...prev, [dateToFetch]: [] }))
+      })
+      .finally(() => setLoadingDate(null))
+  }, [selectedDate, slotCache])
+
+  const isLoading = loadingDate === selectedDate && slotCache[selectedDate] === undefined
+  const timeSlots = slotCache[selectedDate] ?? []
 
   const filteredSlots = useMemo(() => {
     const cutoff = new Date(Date.now() + 3600000)
@@ -295,7 +314,11 @@ export default function PadelClient({
 
       {/* Slot list */}
       <main className="max-w-3xl mx-auto px-4 py-4 space-y-2">
-        {filteredSlots.length > 0 ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          </div>
+        ) : filteredSlots.length > 0 ? (
           filteredSlots.map((slot) => (
             <SlotCard
               key={slot.id}
