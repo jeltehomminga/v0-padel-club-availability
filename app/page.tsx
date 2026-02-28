@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -8,48 +8,40 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar, MapPin, Clock, Filter, Loader2 } from "lucide-react"
 import { playtomicAPI, type TimeSlot } from "@/lib/playtomic-api"
 
+const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+const DURATION_OPTIONS = [
+  { value: "60+", label: "60+ minutes" },
+  { value: "60", label: "60 minutes" },
+  { value: "90", label: "90 minutes" },
+] as const
+const CLUB_WEBSITES: Record<string, string> = {
+  "Bisma Padel": "https://www.bismapadel.com",
+  "Padel of Gods": "https://www.padelofgods.com",
+  "Simply Padel Sanur": "https://www.simplypadel.com",
+}
+
+const getDateString = (offset: number = 0) => {
+  const date = new Date()
+  date.setDate(date.getDate() + offset)
+  return date.toISOString().split("T")[0]
+}
+
+const getNext14Days = () => Array.from({ length: 14 }, (_, i) => getDateString(i))
+
 export default function PadelAvailability() {
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([])
-  const [filteredSlots, setFilteredSlots] = useState<TimeSlot[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selectedDate, setSelectedDate] = useState<string>("today")
+  const [selectedDate, setSelectedDate] = useState<string>(getDateString())
   const [selectedLocation, setSelectedLocation] = useState<string>("all")
   const [selectedClub, setSelectedClub] = useState<string>("all")
   const [selectedDuration, setSelectedDuration] = useState<string>("60+")
   const [cache, setCache] = useState<Record<string, TimeSlot[]>>({})
-  const [renderKey, setRenderKey] = useState(0)
 
-  const getTodayDate = () => {
-    return new Date().toISOString().split("T")[0]
-  }
-
-  const getTomorrowDate = () => {
-    const tomorrow = new Date()
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    return tomorrow.toISOString().split("T")[0]
-  }
-
-  const getNext14Days = () => {
-    const dates = []
-    for (let i = 0; i < 14; i++) {
-      const date = new Date()
-      date.setDate(date.getDate() + i)
-      dates.push(date.toISOString().split("T")[0])
-    }
-    return dates
-  }
-
-  const getWeekdayName = (weekdayIndex: number) => {
-    const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-    return weekdays[weekdayIndex]
-  }
-
-  const loadAvailability = useCallback(
-    async (dateToFetch: string) => {
-      if (cache[dateToFetch]) {
-        console.log("[v0] Using cached data for date:", dateToFetch)
-        setTimeSlots(cache[dateToFetch])
+  useEffect(() => {
+    const loadAvailability = async () => {
+      if (cache[selectedDate]) {
+        setTimeSlots(cache[selectedDate])
         setLoading(false)
         return
       }
@@ -58,158 +50,76 @@ export default function PadelAvailability() {
       setError(null)
 
       try {
-        console.log("[v0] Fetching availability for date:", dateToFetch)
-        const slots = await playtomicAPI.getAllSlotsForBothLocations(dateToFetch)
-        console.log("[v0] Received slots:", slots.length)
-
+        const slots = await playtomicAPI.getAllSlotsForBothLocations(selectedDate)
         setTimeSlots(slots)
-        setCache((prev) => ({ ...prev, [dateToFetch]: slots }))
-      } catch (err) {
-        console.error("[v0] Error loading availability:", err)
+        setCache((prev) => ({ ...prev, [selectedDate]: slots }))
+      } catch {
         setError("Failed to load availability. Please try again.")
       } finally {
         setLoading(false)
       }
-    },
-    [cache],
-  )
+    }
 
-  useEffect(() => {
-    const dateToFetch =
-      selectedDate === "today" ? getTodayDate() : selectedDate === "tomorrow" ? getTomorrowDate() : selectedDate
+    loadAvailability()
+  }, [selectedDate, cache])
 
-    loadAvailability(dateToFetch)
-  }, [selectedDate, loadAvailability])
+  const filteredSlots = useMemo(() => {
+    const oneHourFromNow = new Date(Date.now() + 3600000)
+    const durationFilters: Record<string, (d: number) => boolean> = {
+      "60+": (d) => d >= 60,
+      "60": (d) => d === 60,
+      "90": (d) => d === 90,
+    }
 
-  const uniqueDates = getNext14Days()
-  const uniqueClubs = [...new Set(timeSlots.map((slot) => slot.club))]
-
-  useEffect(() => {
-    let filtered = [...timeSlots] // Create new array reference to ensure React detects changes
-
-    console.log("[v0] Starting filtering with", timeSlots.length, "total slots")
-    console.log("[v0] Selected duration filter:", selectedDuration)
-
-    const now = new Date()
-    const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000)
-
-    // Filter out past slots (before 1 hour from now)
-    filtered = filtered.filter((slot) => {
-      const slotDateTime = new Date(`${slot.date}T${slot.time}`)
-      return slotDateTime > oneHourFromNow
+    return timeSlots.filter((slot) => {
+      const slotTime = new Date(`${slot.date}T${slot.time}`)
+      return (
+        slotTime > oneHourFromNow &&
+        (selectedDuration === "60+" || durationFilters[selectedDuration]?.(slot.duration)) &&
+        (selectedLocation === "all" || slot.location === selectedLocation) &&
+        (selectedClub === "all" || slot.club === selectedClub)
+      )
     })
-
-    console.log("[v0] After time filtering:", filtered.length, "slots")
-
-    if (selectedDuration === "60+") {
-      filtered = filtered.filter((slot) => slot.duration >= 60)
-      console.log("[v0] After 60+ duration filtering:", filtered.length, "slots")
-    } else if (selectedDuration === "60") {
-      filtered = filtered.filter((slot) => slot.duration === 60)
-      console.log("[v0] After 60min duration filtering:", filtered.length, "slots")
-    } else if (selectedDuration === "90") {
-      filtered = filtered.filter((slot) => slot.duration === 90)
-      console.log("[v0] After 90min duration filtering:", filtered.length, "slots")
-      const durations = filtered.map((slot) => slot.duration)
-      console.log("[v0] Remaining slot durations after 90min filter:", durations)
-    }
-
-    if (selectedLocation !== "all") {
-      filtered = filtered.filter((slot) => slot.location === selectedLocation)
-      console.log("[v0] After location filtering:", filtered.length, "slots")
-    }
-
-    if (selectedClub !== "all") {
-      filtered = filtered.filter((slot) => slot.club === selectedClub)
-      console.log("[v0] After club filtering:", filtered.length, "slots")
-    }
-
-    console.log("[v0] Final filtered slots:", filtered.length)
-    console.log("[v0] Setting filteredSlots to new array with length:", filtered.length) // Added debug log
-    setFilteredSlots([...filtered]) // Ensure new array reference for React re-render
-    setRenderKey((prev) => prev + 1)
-  }, [selectedLocation, selectedClub, timeSlots, selectedDuration])
+  }, [timeSlots, selectedDuration, selectedLocation, selectedClub])
 
   const formatDate = (dateString: string) => {
-    if (dateString === "today") return "Today"
-    if (dateString === "tomorrow") return "Tomorrow"
-
     const date = new Date(dateString)
-    const today = new Date()
-    const tomorrow = new Date()
-    tomorrow.setDate(today.getDate() + 1)
+    const today = getDateString(0)
+    const tomorrow = getDateString(1)
 
-    if (dateString === today.toISOString().split("T")[0]) return "Today"
-    if (dateString === tomorrow.toISOString().split("T")[0]) return "Tomorrow"
+    if (dateString === today) return "Today"
+    if (dateString === tomorrow) return "Tomorrow"
 
-    return date.toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-    })
+    return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
   }
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
-    }).format(price)
-  }
+  const formatPrice = (price: number) =>
+    new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(price)
 
   const formatCourtName = (courtName: string) => {
-    if (courtName.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-      const shortId = courtName.slice(-8).toUpperCase()
-      return `Court ${shortId.slice(0, 4)}`
+    if (/^[0-9a-f]{8}-/.test(courtName)) {
+      return `Court ${courtName.slice(-8, -4).toUpperCase()}`
     }
-
-    if (courtName.startsWith("Court ") && courtName.length > 15) {
-      const parts = courtName.split(" ")
-      if (parts[1] && parts[1].length > 8) {
-        return `Court ${parts[1].slice(0, 4).toUpperCase()}`
-      }
-    }
-
-    return courtName
+    return courtName.startsWith("Court") ? courtName : `Court ${courtName}`
   }
 
-  const isMobile = () => {
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-  }
-
-  const getBookingUrl = (slot: TimeSlot) => {
-    if (isMobile()) {
-      // On mobile, try to open Playtomic app
-      return `playtomic://book/${slot.tenantId}/${slot.resourceId}/${slot.date}/${slot.time}`
-    } else {
-      // On desktop, try club website first, then fallback to Playtomic web
-      const clubWebsites: Record<string, string> = {
-        "Bisma Padel": "https://www.bismapadel.com",
-        "Padel of Gods": "https://www.padelofgods.com",
-        "Simply Padel Sanur": "https://www.simplypadel.com",
-        // Add more club websites as they become available
-      }
-
-      return clubWebsites[slot.club] || `https://playtomic.io/club/${slot.tenantId}`
-    }
-  }
+  const isMobile = () => /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
 
   const handleBookNow = (slot: TimeSlot) => {
-    const url = getBookingUrl(slot)
+    const url = isMobile()
+      ? `playtomic://book/${slot.club}/${slot.date}/${slot.time}`
+      : CLUB_WEBSITES[slot.club] || "https://playtomic.io"
 
     if (isMobile() && url.startsWith("playtomic://")) {
-      // Try to open app, fallback to web if app not installed
       window.location.href = url
-
-      // Fallback to web version after a short delay if app doesn't open
-      setTimeout(() => {
-        window.open(`https://playtomic.io/club/${slot.tenantId}`, "_blank")
-      }, 1000)
+      setTimeout(() => window.open("https://playtomic.io", "_blank"), 1000)
     } else {
-      // Open in new tab for desktop
       window.open(url, "_blank")
     }
   }
+
+  const uniqueDates = getNext14Days()
+  const uniqueClubs = [...new Set(timeSlots.map((s) => s.club))]
 
   if (loading) {
     return (
@@ -299,9 +209,11 @@ export default function PadelAvailability() {
                 <SelectValue placeholder="Duration" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="60+">60+ minutes</SelectItem>
-                <SelectItem value="60">60 minutes</SelectItem>
-                <SelectItem value="90">90 minutes</SelectItem>
+                {DURATION_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -312,13 +224,11 @@ export default function PadelAvailability() {
             <div className="flex flex-wrap gap-2">
               {getNext14Days().map((date) => {
                 const dateObj = new Date(date)
-                const weekdayName = getWeekdayName(dateObj.getDay())
-                const isToday = date === getTodayDate()
-                const isTomorrow = date === getTomorrowDate()
-
-                let label = weekdayName.slice(0, 3)
-                if (isToday) label += " (Today)"
-                else if (isTomorrow) label += " (Tomorrow)"
+                const today = getDateString(0)
+                const tomorrow = getDateString(1)
+                const dayLabel = WEEKDAYS[dateObj.getDay()].slice(0, 3)
+                const label =
+                  date === today ? `${dayLabel} (Today)` : date === tomorrow ? `${dayLabel} (Tomorrow)` : dayLabel
 
                 return (
                   <Button
@@ -333,7 +243,7 @@ export default function PadelAvailability() {
                     }`}
                   >
                     {label}
-                    <span className="ml-1 text-xs opacity-75">{dateObj.getDate()}</span>
+                    <span className="ml-1 opacity-75">{dateObj.getDate()}</span>
                   </Button>
                 )
               })}
@@ -355,9 +265,9 @@ export default function PadelAvailability() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredSlots.map((slot, index) => (
+          {filteredSlots.map((slot) => (
             <Card
-              key={`${slot.id}-${renderKey}-${index}`}
+              key={slot.id}
               className="bg-white/90 backdrop-blur-sm border-emerald-100 hover:shadow-lg transition-all duration-200 hover:border-emerald-200"
             >
               <CardHeader className="pb-3">
