@@ -81,9 +81,12 @@ export class PlaytomicAPI {
 
     try {
       const response = await fetch(url)
+      if (!response.ok) {
+        return []
+      }
       const resources = await response.json()
-      return resources
-    } catch (error) {
+      return Array.isArray(resources) ? resources : []
+    } catch {
       // Resources API is optional, silently return empty array
       return []
     }
