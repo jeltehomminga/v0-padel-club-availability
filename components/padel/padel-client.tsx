@@ -186,15 +186,12 @@ export default function PadelClient({
   })
 
   const handleBook = useCallback((slot: TimeSlot) => {
-    const url = isMobileDevice()
-      ? playtomicTenantUrl(slot.tenantId, slot.tenantSlug)
+    const mobile = isMobileDevice()
+    const url = mobile
+      ? playtomicTenantUrl(slot.tenantId)
       : (clubWebsites[slot.club] ??
         playtomicTenantUrl(slot.tenantId, slot.tenantSlug))
-    if (isMobileDevice()) {
-      globalThis.location.href = url
-    } else {
-      globalThis.open(url, "_blank", "noopener,noreferrer")
-    }
+    globalThis.open(url, "_blank", "noopener,noreferrer")
   }, [])
 
   const uniqueClubsFromSlots = [
