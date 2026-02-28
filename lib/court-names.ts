@@ -24,9 +24,9 @@ const TENANT_COURT_NAMES: Record<string, string> = {
 
   // ── Simply Padel Sanur (48c00d13) ─────────────────────────────────────────
   // Source: playtomic.io/tenant/48c00d13-d40e-494f-86b1-1defd37c81eb
-  "48c00d13::156a30d0": "Court 1 (Satu)",
+  "48c00d13::156a30d0": "Court 3 (Tiga)",
   "48c00d13::62532960": "Court 2 (Dua)",
-  "48c00d13::8a0bff4d": "Court 3 (Tiga)",
+  "48c00d13::8a0bff4d": "Court 1 (Satu)",
 
   // ── FINE GROUND (8e6debc5) ────────────────────────────────────────────────
   // Source: playtomic.io/tenant/8e6debc5-34b0-4e24-be1c-cae3e5bc1fb3
