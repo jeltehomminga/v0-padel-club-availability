@@ -1,4 +1,5 @@
 // Real Playtomic API integration utilities
+import { getCourtName } from "@/lib/court-names"
 
 export interface PlaytomicTenant {
   id: string
@@ -8,12 +9,6 @@ export interface PlaytomicTenant {
     lat: number
     lon: number // Changed from lng to lon to match API response
   }
-}
-
-export interface PlaytomicResource {
-  id: string
-  name: string
-  tenant_id: string
 }
 
 export interface PlaytomicSlot {
@@ -82,13 +77,6 @@ export class PlaytomicAPI {
     return data ?? []
   }
 
-  async getResources(tenantId: string): Promise<PlaytomicResource[]> {
-    const data = await this.fetch<PlaytomicResource[]>(
-      `${this.baseUrl}/resources?tenant_id=${tenantId}`
-    )
-    return data ?? []
-  }
-
   // Returns slots AND the tenants used, so callers don't need to re-fetch tenants
   private async getSlotsAndTenants(
     location: "ubud" | "sanur",
@@ -98,23 +86,16 @@ export class PlaytomicAPI {
     const allSlots: TimeSlot[] = []
 
     for (const tenant of tenants) {
-      // Fetch availability and resources in parallel — resources give us real court names
-      const [availability, resources] = await Promise.all([
-        this.getAvailability(tenant.id, date),
-        this.getResources(tenant.id),
-      ])
-
-      // Build a lookup map from resource UUID → human-readable court name
-      const courtNames = new Map(resources.map((r) => [r.id, r.name]))
+      const availability = await this.getAvailability(tenant.id, date)
 
       for (const avail of availability) {
-        // Use the real court name if available; fall back to a short readable ID
-        const court = courtNames.get(avail.resource_id)
-          ?? `Court ${avail.resource_id.substring(0, 8)}`
+        // Resolve human-readable court name from static map
+        const court = getCourtName(avail.resource_id)
 
         for (const slot of avail.slots) {
           allSlots.push({
-            id: `${tenant.id}-${avail.resource_id}-${avail.start_date}-${slot.start_time}`,
+            // Include duration in the key to prevent duplicates across duration variants
+            id: `${tenant.id}-${avail.resource_id}-${avail.start_date}-${slot.start_time}-${slot.duration}`,
             tenantId: tenant.id,
             club: tenant.name,
             location: LOCATIONS[location].name as "Ubud" | "Sanur",
