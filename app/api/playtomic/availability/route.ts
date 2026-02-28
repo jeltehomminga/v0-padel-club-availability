@@ -46,13 +46,6 @@ export async function GET(request: NextRequest) {
 
         const data = await response.json()
 
-        // Log every resource_id seen for this tenant — used to build the static court name map
-        if (Array.isArray(data)) {
-          data.forEach((item: any) => {
-            console.log(`[v0-map] tenant=${tenantId} resource=${item.resource_id}`)
-          })
-        }
-
         const availability = Array.isArray(data)
           ? data.map((item: any) => ({
               ...item,

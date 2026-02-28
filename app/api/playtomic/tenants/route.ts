@@ -57,11 +57,6 @@ export async function GET(request: NextRequest) {
       coordinate: tenant.address?.coordinate || tenant.coordinate || tenant.coordinates || tenant.location || tenant.coord,
     }))
 
-    // Log every tenant so we can correlate tenant IDs with club names
-    mappedTenants.forEach((t: any) => {
-      console.log(`[v0-map] location=${location} tenant=${t.id} name="${t.name}"`)
-    })
-
     serverCache.set(cacheKey, mappedTenants)
     return NextResponse.json(mappedTenants)
   } catch {

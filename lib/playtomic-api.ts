@@ -89,8 +89,8 @@ export class PlaytomicAPI {
       const availability = await this.getAvailability(tenant.id, date)
 
       for (const avail of availability) {
-        // Resolve human-readable court name from static map
-        const court = getCourtName(avail.resource_id)
+        // Resolve human-readable court name using tenant+resource pair
+        const court = getCourtName(tenant.id, avail.resource_id)
 
         for (const slot of avail.slots) {
           allSlots.push({
