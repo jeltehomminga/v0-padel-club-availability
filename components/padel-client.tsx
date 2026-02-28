@@ -1,19 +1,10 @@
 "use client"
 
-import { useState, useEffect, useMemo, useRef } from "react"
-import { Button } from "@/components/ui/button"
+import { useState, useMemo, useRef } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Clock, Loader2, MapPin, ExternalLink } from "lucide-react"
+import { Clock, MapPin, ExternalLink } from "lucide-react"
 import type { TimeSlot } from "@/lib/playtomic-api"
-
-// Fetches slots for a date via the API route — cached server-side with Next.js fetch cache,
-// so the browser also benefits from Cache-Control headers on repeated requests.
-async function fetchSlotsForDateClient(date: string): Promise<TimeSlot[]> {
-  const res = await fetch(`/api/playtomic/slots?date=${date}`)
-  if (!res.ok) return []
-  return res.json()
-}
 import { isUnmappedCourt } from "@/lib/court-names"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -210,10 +201,10 @@ function SlotCard({
 // ─── Main client component ────────────────────────────────────────────────────
 
 export default function PadelClient({
-  initialSlots,
+  initialSlotCache,
   initialDate,
 }: {
-  initialSlots: TimeSlot[]
+  initialSlotCache: Record<string, TimeSlot[]>
   initialDate: string
 }) {
   const [selectedDate, setSelectedDate] = useState(initialDate)
@@ -221,28 +212,8 @@ export default function PadelClient({
   const [selectedClub, setSelectedClub] = useState("all")
   const [selectedDuration, setSelectedDuration] = useState("60+")
 
-  // Per-date slot cache — seeded with server-fetched today data
-  const [slotCache, setSlotCache] = useState<Record<string, TimeSlot[]>>({
-    [initialDate]: initialSlots,
-  })
-  const [loadingDate, setLoadingDate] = useState<string | null>(null)
-
-  const timeSlots = slotCache[selectedDate] ?? []
-  const isLoading = loadingDate === selectedDate && !slotCache[selectedDate]
-
-  // Fetch slots for a date not yet in cache
-  useEffect(() => {
-    if (slotCache[selectedDate]) return
-    setLoadingDate(selectedDate)
-    fetchSlotsForDateClient(selectedDate)
-      .then((slots) => {
-        setSlotCache((prev) => ({ ...prev, [selectedDate]: slots }))
-      })
-      .catch(() => {
-        setSlotCache((prev) => ({ ...prev, [selectedDate]: [] }))
-      })
-      .finally(() => setLoadingDate(null))
-  }, [selectedDate, slotCache])
+  // All 14 days are pre-fetched server-side — no client fetching needed
+  const timeSlots = initialSlotCache[selectedDate] ?? []
 
   const filteredSlots = useMemo(() => {
     const cutoff = new Date(Date.now() + 3600000)
@@ -324,11 +295,7 @@ export default function PadelClient({
 
       {/* Slot list */}
       <main className="max-w-3xl mx-auto px-4 py-4 space-y-2">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-6 h-6 animate-spin text-primary" />
-          </div>
-        ) : filteredSlots.length > 0 ? (
+        {filteredSlots.length > 0 ? (
           filteredSlots.map((slot) => (
             <SlotCard
               key={slot.id}
