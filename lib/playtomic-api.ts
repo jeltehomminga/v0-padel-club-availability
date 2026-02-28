@@ -82,6 +82,13 @@ export class PlaytomicAPI {
     return data ?? []
   }
 
+  async getResources(tenantId: string): Promise<PlaytomicResource[]> {
+    const data = await this.fetch<PlaytomicResource[]>(
+      `${this.baseUrl}/resources?tenant_id=${tenantId}`
+    )
+    return data ?? []
+  }
+
   // Returns slots AND the tenants used, so callers don't need to re-fetch tenants
   private async getSlotsAndTenants(
     location: "ubud" | "sanur",
@@ -91,9 +98,20 @@ export class PlaytomicAPI {
     const allSlots: TimeSlot[] = []
 
     for (const tenant of tenants) {
-      const availability = await this.getAvailability(tenant.id, date)
+      // Fetch availability and resources in parallel — resources give us real court names
+      const [availability, resources] = await Promise.all([
+        this.getAvailability(tenant.id, date),
+        this.getResources(tenant.id),
+      ])
+
+      // Build a lookup map from resource UUID → human-readable court name
+      const courtNames = new Map(resources.map((r) => [r.id, r.name]))
 
       for (const avail of availability) {
+        // Use the real court name if available; fall back to a short readable ID
+        const court = courtNames.get(avail.resource_id)
+          ?? `Court ${avail.resource_id.substring(0, 8)}`
+
         for (const slot of avail.slots) {
           allSlots.push({
             id: `${tenant.id}-${avail.resource_id}-${avail.start_date}-${slot.start_time}`,
@@ -102,7 +120,7 @@ export class PlaytomicAPI {
             location: LOCATIONS[location].name as "Ubud" | "Sanur",
             date: avail.start_date,
             time: slot.start_time,
-            court: `Court ${avail.resource_id.substring(0, 8)}`,
+            court,
             price: slot.price,
             available: true,
             duration: slot.duration,
