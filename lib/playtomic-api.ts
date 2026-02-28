@@ -1,10 +1,11 @@
-import { getCourtName } from "@/lib/court-names"
+import { getCourtName, setCourtNames } from "@/lib/court-names"
 import { convertToBaliTime } from "@/lib/time"
 import { serverCache } from "@/lib/cache"
 import type {
   PlaytomicApiTenant,
   PlaytomicApiAvailabilityItem,
   PlaytomicApiSlot,
+  PlaytomicApiResource,
 } from "@/lib/types"
 
 const playtomicBase = "https://api.playtomic.io/v1"
@@ -101,6 +102,27 @@ const fetchAvailabilityServer = async (
   return result
 }
 
+const RESOURCE_CACHE_TTL = 24 * 60 * 60 * 1000 // 24h — court names rarely change
+
+export async function fetchResourceNames(
+  tenantId: string,
+): Promise<PlaytomicApiResource[]> {
+  const cacheKey = `resources-${tenantId}`
+  const cached = serverCache.get<PlaytomicApiResource[]>(cacheKey)
+  if (cached) return cached
+
+  const url = `${playtomicBase}/tenants/${tenantId}/resources`
+  const data = await serverFetch<PlaytomicApiResource[]>(url, 24 * 60 * 60)
+  if (!data || !Array.isArray(data)) return []
+
+  const padel = data.filter(
+    (r) => !r.sport_id || r.sport_id === "PADEL",
+  )
+  serverCache.set(cacheKey, padel, RESOURCE_CACHE_TTL)
+  setCourtNames(tenantId, padel)
+  return padel
+}
+
 async function fetchSlotsForDateInternal(date: string): Promise<TimeSlot[]> {
   const [ubudTenants, sanurTenants] = await Promise.all([
     fetchTenantsServer("ubud"),
@@ -125,7 +147,10 @@ async function fetchSlotsForDateInternal(date: string): Promise<TimeSlot[]> {
   const allSlots = (
     await Promise.all(
       uniqueTenants.map(async (tenant) => {
-        const availability = await fetchAvailabilityServer(tenant.id, date)
+        const [availability] = await Promise.all([
+          fetchAvailabilityServer(tenant.id, date),
+          fetchResourceNames(tenant.id),
+        ])
         return availability.flatMap((avail) =>
           avail.slots.map((slot) => ({
             id: `${tenant.id}-${avail.resource_id}-${avail.start_date}-${slot.start_time}-${slot.duration}`,

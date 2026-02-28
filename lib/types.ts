@@ -27,6 +27,19 @@ export type PlaytomicApiAvailabilityItem = {
   slots?: PlaytomicApiSlot[]
 }
 
+export type PlaytomicApiResource = {
+  resource_id: string
+  name: string
+  sport_id?: string
+  reservation_priority?: number
+  is_active?: boolean
+  properties?: {
+    resource_type?: string
+    resource_size?: string
+    resource_feature?: string
+  }
+}
+
 // ─── User preferences (localStorage) ───────────────────────────────────────
 
 export type TimeRange = {

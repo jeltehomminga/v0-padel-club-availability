@@ -1,93 +1,122 @@
 /**
- * Static map of tenantId::resourceId → human-readable court name.
+ * Court name resolution for Playtomic resources.
  *
- * The Playtomic /v1/resources endpoint is not publicly accessible (returns 404).
- * Court names are sourced directly from playtomic.io/tenant/{tenantId} and
- * cross-referenced with the resource UUIDs observed in /v1/availability responses.
+ * Primary: fetches names dynamically from /v1/tenants/{id}/resources (cached 24h).
+ * Fallback: static map below, used when the API is unreachable.
  *
- * Last verified: Feb 2026
+ * The static map is auto-verified by tests against the live API.
  */
-const TENANT_COURT_NAMES: Record<string, string> = {
+const FALLBACK_COURT_NAMES: Record<string, string> = {
   // ── Bam Bam Padel | Ubud Bali (9a18884f) ─────────────────────────────────
-  // Source: playtomic.io/tenant/9a18884f-0b5a-4013-bcb5-16acc8b6de36
-  "9a18884f::78c071c3": "Bandeja Court",
-  "9a18884f::c07c691d": "Golden Point Court",
-  "9a18884f::2cf59005": "Drop Shot Court",
-  "9a18884f::a7c47627": "Chiquita Court",
-  "9a18884f::190bc9d2": "Vibora Court",
+  "9a18884f::a7c47627": "Bandeja Court",
+  "9a18884f::78c071c3": "Golden Point Court",
+  "9a18884f::c07c691d": "Drop Shot Court",
+  "9a18884f::190bc9d2": "Chiquita Court",
+  "9a18884f::2cf59005": "Vibora Court",
 
   // ── Gods Social Club / Padel of Gods (e8eb5e6f) ───────────────────────────
-  // Source: playtomic.io/tenant/e8eb5e6f-6bca-4e0d-a527-5f34af8af6af
-  "e8eb5e6f::1a3cb35d": "Karma",
-  "e8eb5e6f::5b754cd1": "Dharma",
-  "e8eb5e6f::5c766963": "Purgatory (Outdoor)",
+  "e8eb5e6f::5c766963": "Karma",
+  "e8eb5e6f::1a3cb35d": "Dharma",
+  "e8eb5e6f::5b754cd1": "Purgatory (Outdoor)",
 
   // ── Simply Padel Sanur (48c00d13) ─────────────────────────────────────────
-  // Source: playtomic.io/tenant/48c00d13-d40e-494f-86b1-1defd37c81eb
+  "48c00d13::62532960": "Court 1 (Satu)",
+  "48c00d13::8a0bff4d": "Court 2 (Dua)",
   "48c00d13::156a30d0": "Court 3 (Tiga)",
-  "48c00d13::62532960": "Court 2 (Dua)",
-  "48c00d13::8a0bff4d": "Court 1 (Satu)",
 
   // ── FINE GROUND (8e6debc5) ────────────────────────────────────────────────
-  // Source: playtomic.io/fine-ground/8e6debc5-34b0-4e24-be1c-cae3e5bc1fb3
-  "8e6debc5::5dc61d47": "South Court",
-  "8e6debc5::da0a3656": "North Court",
+  "8e6debc5::da0a3656": "South Court",
+  "8e6debc5::5dc61d47": "North Court",
 
   // ── Bisma Padel (6407c760) ────────────────────────────────────────────────
-  // Source: playtomic.io/bisma-padel/6407c760-c32c-4a1d-919b-3213efae187b
   "6407c760::91d38986": "Bisma 1",
   "6407c760::2400f56e": "Bisma 2",
 
   // ── Monkey Padel Bali Sayan Ubud (5ad933a3) ───────────────────────────────
-  // Source: playtomic.io/tenant/5ad933a3-5f0d-40e2-a6db-302c47950a25
   "5ad933a3::350bcb71": "Center Court",
-  "5ad933a3::3b5e99ff": "Court 2",
-  "5ad933a3::b12a8cb9": "Court 3",
+  "5ad933a3::b12a8cb9": "Court 2",
+  "5ad933a3::3b5e99ff": "Court 3",
 
   // ── TAO Padel Academy (bc8e4a3c) ──────────────────────────────────────────
-  // Source: playtomic.io/tenant/bc8e4a3c-62b1-4161-9b5d-d05eed1a1378
-  "bc8e4a3c::4ea93257": "Court 1",
-  "bc8e4a3c::02245c98": "Court 2",
+  "bc8e4a3c::b8002086": "Court 1",
+  "bc8e4a3c::4ea93257": "Court 2",
   "bc8e4a3c::05e7214d": "Court 3",
-  "bc8e4a3c::b8002086": "Court 4",
+  "bc8e4a3c::02245c98": "Court 4",
 
   // ── Mahima Tennis, Padel & Gym (325afbbf) ─────────────────────────────────
-  // Source: playtomic.io/mahima/325afbbf-2acc-473b-b93c-0dd30b4adff3
-  "325afbbf::6dade228": "Padel 1",
-  "325afbbf::a0756f12": "Padel 2",
-  "325afbbf::ccfdce4e": "Padel 3",
+  "325afbbf::ccfdce4e": "Padel 1",
+  "325afbbf::6dade228": "Padel 2",
+  "325afbbf::a0756f12": "Padel 3",
 
   // ── Prime Padel & Pickle (c32d1739) ───────────────────────────────────────
-  // Source: playtomic.io/prime-padel-pickle/c32d1739-bfd4-481f-9146-fcb8b6acac3c
-  "c32d1739::dba606ad": "Padel 1",
-  "c32d1739::11ef4c74": "Padel 2",
+  "c32d1739::11ef4c74": "Padel 1",
+  "c32d1739::dba606ad": "Padel 2",
 
   // ── Padel Dise Bali (6ca040f6) ────────────────────────────────────────────
-  // Source: playtomic.io/padel-dise-bali/6ca040f6-0edd-4578-a63a-91258ed8381b
   "6ca040f6::2f28606b": "Padel 1",
   "6ca040f6::11e070ec": "Padel 2",
-  "6ca040f6::0666822e": "Padel 3",
-  "6ca040f6::17133465": "Padel 4",
+  "6ca040f6::17133465": "Padel 3",
+  "6ca040f6::0666822e": "Padel 4",
+}
+
+// ─── Dynamic court name cache ────────────────────────────────────────────────
+// Maps tenantId (first 8 chars) → { resourceId8 → name }
+const dynamicCourtNames = new Map<string, Map<string, string>>()
+
+export function buildKey(tenantId: string, resourceId: string) {
+  return {
+    tenantKey: tenantId.substring(0, 8),
+    resourceKey: resourceId.substring(0, 8),
+  }
+}
+
+/**
+ * Populate the dynamic cache for a tenant with resource names from the API.
+ * Called during slot fetching so court names are always fresh.
+ */
+export function setCourtNames(
+  tenantId: string,
+  resources: { resource_id: string; name: string }[],
+): void {
+  const tenantKey = tenantId.substring(0, 8)
+  const map = new Map<string, string>()
+  for (const r of resources) {
+    map.set(r.resource_id.substring(0, 8), r.name.trim())
+  }
+  dynamicCourtNames.set(tenantKey, map)
 }
 
 /**
  * Returns the human-readable court name for a given tenant + resource UUID pair.
- * Uses only the first 8 characters of each UUID as the key for robustness.
- * Falls back to a short UUID fragment if the pair is not yet in the map.
  *
- * To add a new tenant, visit:
- *   /api/playtomic/discover-courts
- * It will show you the exact snippet to paste here.
+ * Resolution order:
+ *  1. Dynamic cache (populated from /v1/tenants/{id}/resources)
+ *  2. Static fallback map
+ *  3. Short UUID fragment
  */
 export function getCourtName(tenantId: string, resourceId: string): string {
-  const key = `${tenantId.substring(0, 8)}::${resourceId.substring(0, 8)}`
-  return TENANT_COURT_NAMES[key] ?? `Court ${resourceId.substring(0, 8)}`
+  const { tenantKey, resourceKey } = buildKey(tenantId, resourceId)
+
+  const dynamic = dynamicCourtNames.get(tenantKey)?.get(resourceKey)
+  if (dynamic) return dynamic
+
+  const fallback = FALLBACK_COURT_NAMES[`${tenantKey}::${resourceKey}`]
+  if (fallback) return fallback
+
+  return `Court ${resourceKey}`
 }
 
 /**
  * Returns true if the court name is still an unmapped fallback.
- * Use this to flag unknown courts in the UI.
  */
 export function isUnmappedCourt(name: string): boolean {
   return /^Court [0-9a-f]{8}$/.test(name)
 }
+
+/** Visible for testing. */
+export function clearDynamicCache(): void {
+  dynamicCourtNames.clear()
+}
+
+/** Visible for testing. */
+export { FALLBACK_COURT_NAMES }
