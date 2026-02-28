@@ -9,10 +9,7 @@
  */
 
 import { NextResponse } from "next/server"
-import {
-  getCourtName,
-  FALLBACK_COURT_NAMES,
-} from "@/lib/court-names"
+import { getCourtName, FALLBACK_COURT_NAMES } from "@/lib/court-names"
 import { fetchResourceNames } from "@/lib/playtomic-api"
 import type { PlaytomicApiTenant } from "@/lib/types"
 
@@ -56,10 +53,8 @@ export async function GET() {
     string,
     { id: string; name: string; location: string }
   >()
-  for (const t of ubudTenants)
-    tenantMap.set(t.id, { ...t, location: "Ubud" })
-  for (const t of sanurTenants)
-    tenantMap.set(t.id, { ...t, location: "Sanur" })
+  for (const t of ubudTenants) tenantMap.set(t.id, { ...t, location: "Ubud" })
+  for (const t of sanurTenants) tenantMap.set(t.id, { ...t, location: "Sanur" })
   const allTenants = [...tenantMap.values()]
 
   const reports = await Promise.all(
@@ -109,20 +104,23 @@ export async function GET() {
   const issues = reports.filter((r) => r.status !== "OK")
 
   // Generate a corrected fallback map snippet for any mismatches
-  const snippet = issues.length === 0
-    ? "// All fallback entries match the API — nothing to update!"
-    : issues.flatMap((report) => {
-        const tenantShort = report.tenantId.substring(0, 8)
-        const lines = [
-          `  // ── ${report.club} (${tenantShort})`,
-          ...report.courts.map(
-            (c) =>
-              `  "${tenantShort}::${c.resourceId.substring(0, 8)}": "${c.apiName}",`,
-          ),
-          "",
-        ]
-        return lines
-      }).join("\n")
+  const snippet =
+    issues.length === 0
+      ? "// All fallback entries match the API — nothing to update!"
+      : issues
+          .flatMap((report) => {
+            const tenantShort = report.tenantId.substring(0, 8)
+            const lines = [
+              `  // ── ${report.club} (${tenantShort})`,
+              ...report.courts.map(
+                (c) =>
+                  `  "${tenantShort}::${c.resourceId.substring(0, 8)}": "${c.apiName}",`,
+              ),
+              "",
+            ]
+            return lines
+          })
+          .join("\n")
 
   return NextResponse.json({
     generatedAt: new Date().toISOString(),

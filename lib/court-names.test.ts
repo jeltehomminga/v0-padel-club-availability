@@ -14,10 +14,7 @@ beforeEach(() => {
 describe("getCourtName", () => {
   it("returns fallback name for known tenant::resource pair", () => {
     expect(
-      getCourtName(
-        "9a18884f-0b5a-4013-bcb5-16acc8b6de36",
-        "a7c47627-xxxx",
-      ),
+      getCourtName("9a18884f-0b5a-4013-bcb5-16acc8b6de36", "a7c47627-xxxx"),
     ).toBe("Bandeja Court")
   })
 
@@ -81,9 +78,7 @@ describe("dynamic court name cache", () => {
     setCourtNames("48c00d13-full-uuid", [
       { resource_id: "62532960-uuid", name: "Court 1" },
     ])
-    expect(getCourtName("48c00d13", "ffffffff-unknown")).toBe(
-      "Court ffffffff",
-    )
+    expect(getCourtName("48c00d13", "ffffffff-unknown")).toBe("Court ffffffff")
   })
 })
 
@@ -116,10 +111,9 @@ describe("FALLBACK_COURT_NAMES integrity", () => {
 
   it("no entry uses the unmapped fallback pattern as a name", () => {
     for (const [key, name] of Object.entries(FALLBACK_COURT_NAMES)) {
-      expect(
-        isUnmappedCourt(name),
-        `${key} has unmapped name "${name}"`,
-      ).toBe(false)
+      expect(isUnmappedCourt(name), `${key} has unmapped name "${name}"`).toBe(
+        false,
+      )
     }
   })
 })
