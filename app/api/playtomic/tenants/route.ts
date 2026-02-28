@@ -1,9 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { serverCache } from "@/lib/cache"
 
+export const runtime = "nodejs"
+export const dynamic = "force-dynamic"
+
 const LOCATIONS = {
   ubud: { coord: "-8.506,115.262", name: "Ubud" },
-  sanur: { coord: "-8.6725,115.2625", name: "Sanur" },
+  sanur: { coord: "-8.700,115.263", name: "Sanur" },
 }
 
 export async function GET(request: NextRequest) {
@@ -14,7 +17,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Invalid location" }, { status: 400 })
   }
 
-  const cacheKey = `tenants-${location}`
+  const cacheKey = `tenants-v3-${location}`
   const cachedData = serverCache.get(cacheKey)
   if (cachedData) {
     return NextResponse.json(cachedData)
