@@ -1,3 +1,5 @@
+export const BALI_TZ = "Asia/Makassar"
+
 /**
  * Bali is UTC+8. Converts UTC time string (HH:MM:SS) to Bali local time.
  */
@@ -12,7 +14,7 @@ export const convertToBaliTime = (utcTime: string): string => {
 export const getDateString = (offset = 0): string => {
   const date = new Date()
   date.setDate(date.getDate() + offset)
-  return date.toISOString().split("T")[0]
+  return date.toLocaleDateString("sv-SE", { timeZone: BALI_TZ })
 }
 
 export const getNext14Days = (): string[] =>

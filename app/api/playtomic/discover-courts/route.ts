@@ -79,7 +79,9 @@ const fetchResourceIds = async (
 }
 
 export async function GET() {
-  const today = new Date().toISOString().split("T")[0]
+  const today = new Date().toLocaleDateString("sv-SE", {
+    timeZone: "Asia/Makassar",
+  })
 
   // Fetch all tenants from both locations in parallel
   const [ubudTenants, sanurTenants] = await Promise.all([

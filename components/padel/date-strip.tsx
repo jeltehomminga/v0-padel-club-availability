@@ -16,7 +16,7 @@ export function DateStrip({
   selected,
   onSelect,
   onPrefetchDate,
-}: DateStripProps) {
+}: Readonly<DateStripProps>) {
   const today = getDateString(0)
   const tomorrow = getDateString(1)
   const scrollRef = useRef<HTMLDivElement>(null)
