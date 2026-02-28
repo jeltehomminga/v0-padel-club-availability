@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
       id: tenant.tenant_id || tenant.id || tenant._id,
       name: tenant.name || tenant.tenant_name,
       address: tenant.address,
-      coordinate: tenant.coordinate || tenant.coordinates || tenant.location || tenant.coord,
+      coordinate: tenant.address?.coordinate || tenant.coordinate || tenant.coordinates || tenant.location || tenant.coord,
     }))
 
     console.log("[v0] Mapped tenants:", JSON.stringify(mappedTenants.slice(0, 2), null, 2))
