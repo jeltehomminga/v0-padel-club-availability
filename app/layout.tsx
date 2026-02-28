@@ -1,12 +1,13 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { GeistSans } from "geist/font/sans"
-import { GeistMono } from "geist/font/mono"
+import { Inter } from "next/font/google"
 import "./globals.css"
 
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
+
 export const metadata: Metadata = {
-  title: "Padel Club Availability - Ubud & Sanur",
-  description: "Find available padel court time slots in Ubud and Sanur",
+  title: "Padel Courts Bali — Ubud & Sanur Availability",
+  description: "Find available padel court time slots at clubs in Ubud and Sanur, Bali.",
   generator: "v0.app",
 }
 
@@ -16,8 +17,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>{children}</body>
+    <html lang="en" className={inter.variable}>
+      <body className="font-sans antialiased">{children}</body>
     </html>
   )
 }

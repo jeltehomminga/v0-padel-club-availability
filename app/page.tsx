@@ -1,54 +1,208 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Calendar, MapPin, Clock, Filter, Loader2 } from "lucide-react"
+import { Clock, Loader2, MapPin, ExternalLink } from "lucide-react"
 import { playtomicAPI, type TimeSlot } from "@/lib/playtomic-api"
 
-const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+
 const DURATION_OPTIONS = [
-  { value: "60+", label: "60+ minutes" },
-  { value: "60", label: "60 minutes" },
-  { value: "90", label: "90 minutes" },
+  { value: "60+", label: "60+ min" },
+  { value: "60", label: "60 min" },
+  { value: "90", label: "90 min" },
 ] as const
+
 const CLUB_WEBSITES: Record<string, string> = {
   "Bisma Padel": "https://www.bismapadel.com",
   "Padel of Gods": "https://www.padelofgods.com",
   "Simply Padel Sanur": "https://www.simplypadel.com",
 }
 
-const getDateString = (offset: number = 0) => {
-  const date = new Date()
-  date.setDate(date.getDate() + offset)
-  return date.toISOString().split("T")[0]
+// ─── Utilities ────────────────────────────────────────────────────────────────
+
+const getDateString = (offset = 0) => {
+  const d = new Date()
+  d.setDate(d.getDate() + offset)
+  return d.toISOString().split("T")[0]
 }
 
 const getNext14Days = () => Array.from({ length: 14 }, (_, i) => getDateString(i))
+
+const formatPrice = (price: number) =>
+  new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(price)
+
+const formatCourtName = (name: string) => {
+  if (/^[0-9a-f]{8}-/.test(name)) return `Court ${name.slice(-8, -4).toUpperCase()}`
+  return name.startsWith("Court") ? name : `Court ${name}`
+}
+
+const isMobileDevice = () =>
+  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function DateStrip({
+  dates,
+  selected,
+  onSelect,
+}: {
+  dates: string[]
+  selected: string
+  onSelect: (d: string) => void
+}) {
+  const today = getDateString(0)
+  const tomorrow = getDateString(1)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Scroll selected date into view on mount
+  useEffect(() => {
+    const el = scrollRef.current?.querySelector("[data-selected='true']")
+    el?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" })
+  }, [selected])
+
+  return (
+    <div
+      ref={scrollRef}
+      className="flex gap-2 overflow-x-auto pb-1 scrollbar-none"
+      style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+    >
+      {dates.map((date) => {
+        const d = new Date(date)
+        const isSelected = date === selected
+        const label = date === today ? "Today" : date === tomorrow ? "Tmrw" : WEEKDAYS[d.getDay()]
+        const dayNum = d.getDate()
+
+        return (
+          <button
+            key={date}
+            data-selected={isSelected}
+            onClick={() => onSelect(date)}
+            className={`flex flex-col items-center justify-center min-w-[52px] h-[60px] rounded-lg border text-sm font-medium transition-all shrink-0 cursor-pointer ${
+              isSelected
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
+            }`}
+          >
+            <span className="text-xs leading-none mb-1">{label}</span>
+            <span className={`text-lg leading-none font-semibold ${isSelected ? "" : "text-foreground"}`}>
+              {dayNum}
+            </span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function FilterChips({
+  label,
+  options,
+  selected,
+  onSelect,
+}: {
+  label: string
+  options: { value: string; label: string }[]
+  selected: string
+  onSelect: (v: string) => void
+}) {
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide shrink-0">{label}</span>
+      <div className="flex gap-1.5 flex-wrap">
+        {options.map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => onSelect(opt.value)}
+            className={`px-3 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer ${
+              selected === opt.value
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function SlotCard({ slot, onBook }: { slot: TimeSlot; onBook: (slot: TimeSlot) => void }) {
+  const today = getDateString(0)
+  const tomorrow = getDateString(1)
+  const dateLabel =
+    slot.date === today
+      ? "Today"
+      : slot.date === tomorrow
+        ? "Tomorrow"
+        : new Date(slot.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+
+  return (
+    <div className="bg-card border border-border rounded-lg p-4 flex items-center gap-4 hover:border-primary/30 hover:shadow-sm transition-all">
+      {/* Time block */}
+      <div className="flex flex-col items-center justify-center bg-muted rounded-md px-3 py-2 shrink-0 min-w-[64px]">
+        <span className="text-lg font-semibold text-foreground leading-none">
+          {slot.time.slice(0, 5)}
+        </span>
+        <span className="text-xs text-muted-foreground mt-0.5">{slot.duration}min</span>
+      </div>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold text-foreground text-sm leading-tight truncate">{slot.club}</p>
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <MapPin className="w-3 h-3 shrink-0" />
+            {slot.location}
+          </span>
+          <span className="text-xs text-muted-foreground">&middot;</span>
+          <span className="text-xs text-muted-foreground">{formatCourtName(slot.court)}</span>
+          <span className="text-xs text-muted-foreground">&middot;</span>
+          <span className="text-xs text-muted-foreground">{dateLabel}</span>
+        </div>
+      </div>
+
+      {/* Price + CTA */}
+      <div className="flex flex-col items-end gap-2 shrink-0">
+        <span className="text-sm font-semibold text-foreground">{formatPrice(slot.price)}</span>
+        <button
+          onClick={() => onBook(slot)}
+          className="flex items-center gap-1 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-semibold rounded-md hover:opacity-90 transition-opacity cursor-pointer"
+        >
+          Book
+          <ExternalLink className="w-3 h-3" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function PadelAvailability() {
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selectedDate, setSelectedDate] = useState<string>(getDateString())
-  const [selectedLocation, setSelectedLocation] = useState<string>("all")
-  const [selectedClub, setSelectedClub] = useState<string>("all")
-  const [selectedDuration, setSelectedDuration] = useState<string>("60+")
+  const [selectedDate, setSelectedDate] = useState(getDateString())
+  const [selectedLocation, setSelectedLocation] = useState("all")
+  const [selectedClub, setSelectedClub] = useState("all")
+  const [selectedDuration, setSelectedDuration] = useState("60+")
   const [cache, setCache] = useState<Record<string, TimeSlot[]>>({})
 
   useEffect(() => {
-    const loadAvailability = async () => {
+    const load = async () => {
       if (cache[selectedDate]) {
         setTimeSlots(cache[selectedDate])
         setLoading(false)
         return
       }
-
       setLoading(true)
       setError(null)
-
       try {
         const slots = await playtomicAPI.getAllSlotsForBothLocations(selectedDate)
         setTimeSlots(slots)
@@ -59,58 +213,34 @@ export default function PadelAvailability() {
         setLoading(false)
       }
     }
-
-    loadAvailability()
+    load()
   }, [selectedDate, cache])
 
   const filteredSlots = useMemo(() => {
-    const oneHourFromNow = new Date(Date.now() + 3600000)
-    const durationFilters: Record<string, (d: number) => boolean> = {
+    const cutoff = new Date(Date.now() + 3600000)
+    const durationFilter: Record<string, (d: number) => boolean> = {
       "60+": (d) => d >= 60,
       "60": (d) => d === 60,
       "90": (d) => d === 90,
     }
-
     return timeSlots.filter((slot) => {
       const slotTime = new Date(`${slot.date}T${slot.time}`)
       return (
-        slotTime > oneHourFromNow &&
-        (selectedDuration === "60+" || durationFilters[selectedDuration]?.(slot.duration)) &&
+        slotTime > cutoff &&
+        durationFilter[selectedDuration]?.(slot.duration) &&
         (selectedLocation === "all" || slot.location === selectedLocation) &&
         (selectedClub === "all" || slot.club === selectedClub)
       )
     })
   }, [timeSlots, selectedDuration, selectedLocation, selectedClub])
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    const today = getDateString(0)
-    const tomorrow = getDateString(1)
-
-    if (dateString === today) return "Today"
-    if (dateString === tomorrow) return "Tomorrow"
-
-    return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
-  }
-
-  const formatPrice = (price: number) =>
-    new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(price)
-
-  const formatCourtName = (courtName: string) => {
-    if (/^[0-9a-f]{8}-/.test(courtName)) {
-      return `Court ${courtName.slice(-8, -4).toUpperCase()}`
-    }
-    return courtName.startsWith("Court") ? courtName : `Court ${courtName}`
-  }
-
-  const isMobile = () => /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-
-  const handleBookNow = (slot: TimeSlot) => {
-    const url = isMobile()
+  const handleBook = (slot: TimeSlot) => {
+    const mobile = isMobileDevice()
+    const url = mobile
       ? `playtomic://book/${slot.club}/${slot.date}/${slot.time}`
-      : CLUB_WEBSITES[slot.club] || "https://playtomic.io"
+      : CLUB_WEBSITES[slot.club] ?? "https://playtomic.io"
 
-    if (isMobile() && url.startsWith("playtomic://")) {
+    if (mobile && url.startsWith("playtomic://")) {
       window.location.href = url
       setTimeout(() => window.open("https://playtomic.io", "_blank"), 1000)
     } else {
@@ -118,15 +248,28 @@ export default function PadelAvailability() {
     }
   }
 
-  const uniqueDates = getNext14Days()
-  const uniqueClubs = [...new Set(timeSlots.map((s) => s.club))]
+  const dates = getNext14Days()
+  const uniqueClubs = [...new Set(timeSlots.map((s) => s.club))].sort()
+
+  const locationOptions = [
+    { value: "all", label: "All" },
+    { value: "Ubud", label: "Ubud" },
+    { value: "Sanur", label: "Sanur" },
+  ]
+
+  const clubOptions = [
+    { value: "all", label: "All clubs" },
+    ...uniqueClubs.map((c) => ({ value: c, label: c })),
+  ]
+
+  // ─── Loading / Error states ──────────────────────────────────────────────
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-sage-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-emerald-600 mx-auto mb-4" />
-          <p className="text-sage-600">Loading padel availability...</p>
+          <Loader2 className="w-7 h-7 animate-spin text-primary mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">Loading court availability…</p>
         </div>
       </div>
     )
@@ -134,202 +277,89 @@ export default function PadelAvailability() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-sage-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Calendar className="w-8 h-8 text-red-400" />
-          </div>
-          <h3 className="text-lg font-semibold text-red-900 mb-2">Error Loading Data</h3>
-          <p className="text-red-600 mb-4">{error}</p>
-          <Button onClick={() => window.location.reload()} className="bg-emerald-600 hover:bg-emerald-700">
-            Try Again
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <div className="text-center max-w-xs">
+          <p className="text-sm text-muted-foreground mb-4">{error}</p>
+          <Button size="sm" onClick={() => window.location.reload()}>
+            Try again
           </Button>
         </div>
       </div>
     )
   }
 
+  // ─── Main UI ─────────────────────────────────────────────────────────────
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-sage-50">
-      {/* Header */}
-      <div className="bg-white/80 backdrop-blur-sm border-b border-emerald-100 sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-gradient-to-br from-emerald-600 to-jungle-600 rounded-xl flex items-center justify-center">
-              <Calendar className="w-5 h-5 text-white" />
-            </div>
+    <div className="min-h-screen bg-background">
+      {/* ── Sticky header ── */}
+      <header className="sticky top-0 z-20 bg-card border-b border-border">
+        <div className="max-w-3xl mx-auto px-4 pt-4 pb-3 space-y-3">
+          {/* Title */}
+          <div className="flex items-baseline justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-jungle-900">Padel Courts</h1>
-              <p className="text-sage-600 text-sm">Ubud & Sanur Availability</p>
+              <h1 className="text-xl font-semibold text-foreground leading-tight">Padel Courts Bali</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">Ubud &amp; Sanur — live availability</p>
             </div>
+            <Badge
+              variant="outline"
+              className="text-xs text-primary border-primary/30 bg-primary/5 font-medium"
+            >
+              {filteredSlots.length} slots
+            </Badge>
           </div>
 
-          {/* Filters */}
-          <div className="flex flex-wrap gap-3">
-            <Select value={selectedDate} onValueChange={setSelectedDate}>
-              <SelectTrigger className="w-[140px] bg-white border-emerald-200">
-                <SelectValue placeholder="Date" />
-              </SelectTrigger>
-              <SelectContent>
-                {uniqueDates.map((date) => (
-                  <SelectItem key={date} value={date}>
-                    {formatDate(date)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* Date strip */}
+          <DateStrip dates={dates} selected={selectedDate} onSelect={setSelectedDate} />
 
-            <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-              <SelectTrigger className="w-[120px] bg-white border-emerald-200">
-                <SelectValue placeholder="Location" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Locations</SelectItem>
-                <SelectItem value="Ubud">Ubud</SelectItem>
-                <SelectItem value="Sanur">Sanur</SelectItem>
-              </SelectContent>
-            </Select>
+          {/* Filter row */}
+          <div className="flex flex-wrap gap-3 items-center">
+            <FilterChips
+              label="Where"
+              options={locationOptions}
+              selected={selectedLocation}
+              onSelect={setSelectedLocation}
+            />
+            <FilterChips
+              label="Duration"
+              options={DURATION_OPTIONS}
+              selected={selectedDuration}
+              onSelect={setSelectedDuration}
+            />
+          </div>
 
+          {/* Club select — only shown when clubs are loaded */}
+          {uniqueClubs.length > 0 && (
             <Select value={selectedClub} onValueChange={setSelectedClub}>
-              <SelectTrigger className="w-[160px] bg-white border-emerald-200">
-                <SelectValue placeholder="Club" />
+              <SelectTrigger className="h-8 text-xs w-full border-border bg-background">
+                <SelectValue placeholder="All clubs" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Clubs</SelectItem>
-                {uniqueClubs.map((club) => (
-                  <SelectItem key={club} value={club}>
-                    {club}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={selectedDuration} onValueChange={setSelectedDuration}>
-              <SelectTrigger className="w-[140px] bg-white border-emerald-200">
-                <SelectValue placeholder="Duration" />
-              </SelectTrigger>
-              <SelectContent>
-                {DURATION_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
+                {clubOptions.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value} className="text-sm">
                     {opt.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          </div>
-
-          {/* Weekday Quick Selection Buttons */}
-          <div className="mt-4">
-            <p className="text-sm text-sage-600 mb-2">Quick select by weekday:</p>
-            <div className="flex flex-wrap gap-2">
-              {getNext14Days().map((date) => {
-                const dateObj = new Date(date)
-                const today = getDateString(0)
-                const tomorrow = getDateString(1)
-                const dayLabel = WEEKDAYS[dateObj.getDay()].slice(0, 3)
-                const label =
-                  date === today ? `${dayLabel} (Today)` : date === tomorrow ? `${dayLabel} (Tomorrow)` : dayLabel
-
-                return (
-                  <Button
-                    key={date}
-                    variant={selectedDate === date ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSelectedDate(date)}
-                    className={`text-xs ${
-                      selectedDate === date
-                        ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                        : "bg-white hover:bg-emerald-50 text-sage-700 border-emerald-200"
-                    }`}
-                  >
-                    {label}
-                    <span className="ml-1 opacity-75">{dateObj.getDate()}</span>
-                  </Button>
-                )
-              })}
-            </div>
-          </div>
+          )}
         </div>
-      </div>
+      </header>
 
-      {/* Time Slots Grid */}
-      <div className="container mx-auto px-4 py-6">
-        <div className="mb-4 flex items-center justify-between">
-          <p className="text-sage-700">
-            {filteredSlots.length} available slot{filteredSlots.length !== 1 ? "s" : ""}
-          </p>
-          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
-            <Filter className="w-3 h-3 mr-1" />
-            Live Data
-          </Badge>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredSlots.map((slot) => (
-            <Card
-              key={slot.id}
-              className="bg-white/90 backdrop-blur-sm border-emerald-100 hover:shadow-lg transition-all duration-200 hover:border-emerald-200"
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-lg text-jungle-900 mb-1">{slot.club}</CardTitle>
-                    <div className="flex items-center gap-1 text-sage-600 text-sm">
-                      <MapPin className="w-3 h-3" />
-                      {slot.location}
-                    </div>
-                  </div>
-                  <Badge
-                    variant="secondary"
-                    className={`${slot.location === "Ubud" ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700"}`}
-                  >
-                    {slot.location}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-sage-700">
-                      <Calendar className="w-4 h-4" />
-                      <span className="text-sm font-medium">{formatDate(slot.date)}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sage-700">
-                      <Clock className="w-4 h-4" />
-                      <span className="text-sm font-medium">
-                        {slot.time} ({slot.duration}min)
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-sage-600">{formatCourtName(slot.court)}</span>
-                    <span className="font-semibold text-jungle-900">{formatPrice(slot.price)}</span>
-                  </div>
-
-                  <Button
-                    className="w-full bg-gradient-to-r from-emerald-600 to-jungle-600 hover:from-emerald-700 hover:to-jungle-700 text-white"
-                    size="sm"
-                    onClick={() => handleBookNow(slot)} // Added click handler for smart booking
-                  >
-                    Book Now
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {filteredSlots.length === 0 && !loading && (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 bg-sage-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Calendar className="w-8 h-8 text-sage-400" />
-            </div>
-            <h3 className="text-lg font-semibold text-sage-900 mb-2">No slots available</h3>
-            <p className="text-sage-600">Try adjusting your filters or check back later.</p>
+      {/* ── Slot list ── */}
+      <main className="max-w-3xl mx-auto px-4 py-4 space-y-2">
+        {filteredSlots.length > 0 ? (
+          filteredSlots.map((slot) => (
+            <SlotCard key={slot.id} slot={slot} onBook={handleBook} />
+          ))
+        ) : (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <Clock className="w-10 h-10 text-muted-foreground/40 mb-3" />
+            <p className="text-sm font-medium text-foreground mb-1">No slots available</p>
+            <p className="text-xs text-muted-foreground">Try a different date, location, or duration.</p>
           </div>
         )}
-      </div>
+      </main>
     </div>
   )
 }
