@@ -22,11 +22,7 @@ export const metadata: Metadata = {
   title: "PadelPulse — Ubud & Sanur Court Availability",
   description:
     "Find available padel court time slots at clubs in Ubud and Sanur, Bali. Live availability, instant booking.",
-  metadataBase: new URL(
-    process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : "http://localhost:3000",
-  ),
+  metadataBase: new URL("https://padelpulse.space"),
   openGraph: {
     title: "PadelPulse — Find Open Courts in Ubud & Sanur",
     description:
