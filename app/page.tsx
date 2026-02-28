@@ -119,7 +119,7 @@ function FilterChips({
   onSelect,
 }: {
   label: string
-  options: { value: string; label: string }[]
+  options: readonly { value: string; label: string }[]
   selected: string
   onSelect: (v: string) => void
 }) {
