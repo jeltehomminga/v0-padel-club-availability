@@ -29,15 +29,14 @@ const TENANT_COURT_NAMES: Record<string, string> = {
   "48c00d13::8a0bff4d": "Court 1 (Satu)",
 
   // ── FINE GROUND (8e6debc5) ────────────────────────────────────────────────
-  // Source: playtomic.io/tenant/8e6debc5-34b0-4e24-be1c-cae3e5bc1fb3
-  "8e6debc5::5dc61d47": "Court 2 (Dua)",
-  "8e6debc5::da0a3656": "Court 1 (Satu)",
+  // Source: playtomic.io/fine-ground/8e6debc5-34b0-4e24-be1c-cae3e5bc1fb3
+  "8e6debc5::5dc61d47": "South Court",
+  "8e6debc5::da0a3656": "North Court",
 
   // ── Bisma Padel (6407c760) ────────────────────────────────────────────────
-  // Source: playtomic.io/tenant/6407c760-c32c-4a1d-919b-3213efae187b
+  // Source: playtomic.io/bisma-padel/6407c760-c32c-4a1d-919b-3213efae187b
   "6407c760::91d38986": "Bisma 1",
   "6407c760::2400f56e": "Bisma 2",
-  "6407c760::ccfdce4e": "Bisma 3",
 
   // ── Monkey Padel Bali Sayan Ubud (5ad933a3) ───────────────────────────────
   // Source: playtomic.io/tenant/5ad933a3-5f0d-40e2-a6db-302c47950a25
@@ -53,21 +52,22 @@ const TENANT_COURT_NAMES: Record<string, string> = {
   "bc8e4a3c::b8002086": "Court 4",
 
   // ── Mahima Tennis, Padel & Gym (325afbbf) ─────────────────────────────────
-  // Source: playtomic.io/tenant/325afbbf-2acc-473b-b93c-0dd30b4adff3
-  "325afbbf::6dade228": "Court 1",
-  "325afbbf::a0756f12": "Court 2",
-  "325afbbf::ccfdce4e": "Court 3",
+  // Source: playtomic.io/mahima/325afbbf-2acc-473b-b93c-0dd30b4adff3
+  "325afbbf::6dade228": "Padel 1",
+  "325afbbf::a0756f12": "Padel 2",
+  "325afbbf::ccfdce4e": "Padel 3",
 
   // ── Prime Padel & Pickle (c32d1739) ───────────────────────────────────────
-  // Source: playtomic.io/tenant/c32d1739-bfd4-481f-9146-fcb8b6acac3c
-  "c32d1739::dba606ad": "Court 1",
-  "c32d1739::11ef4c74": "Court 2",
+  // Source: playtomic.io/prime-padel-pickle/c32d1739-bfd4-481f-9146-fcb8b6acac3c
+  "c32d1739::dba606ad": "Padel 1",
+  "c32d1739::11ef4c74": "Padel 2",
 
   // ── Padel Dise Bali (6ca040f6) ────────────────────────────────────────────
-  // Source: playtomic.io/tenant/6ca040f6-0edd-4578-a63a-91258ed8381b
-  "6ca040f6::2f28606b": "Court 1",
-  "6ca040f6::11e070ec": "Court 2",
-  "6ca040f6::0666822e": "Court 3",
+  // Source: playtomic.io/padel-dise-bali/6ca040f6-0edd-4578-a63a-91258ed8381b
+  "6ca040f6::2f28606b": "Padel 1",
+  "6ca040f6::11e070ec": "Padel 2",
+  "6ca040f6::0666822e": "Padel 3",
+  "6ca040f6::17133465": "Padel 4",
 }
 
 /**
