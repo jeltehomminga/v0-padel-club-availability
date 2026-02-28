@@ -17,45 +17,65 @@
 import { NextResponse } from "next/server"
 import { serverCache } from "@/lib/cache"
 import { getCourtName } from "@/lib/court-names"
+import type { PlaytomicApiTenant } from "@/lib/types"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-const PLAYTOMIC_API = "https://api.playtomic.io/v1"
-const HEADERS = {
+const playtomicApi = "https://api.playtomic.io/v1"
+const headers = {
   Accept: "application/json",
   "Accept-Language": "en-US,en;q=0.9",
   "X-Requested-With": "com.playtomic.app",
 }
 
-const LOCATIONS = {
+const locations = {
   ubud: { coord: "-8.506,115.262", radius: 10 },
   sanur: { coord: "-8.700,115.263", radius: 10 },
 }
 
-async function fetchTenants(coord: string, radius: number) {
-  const url = `${PLAYTOMIC_API}/tenants?size=100&status=ACTIVE&sport_id=PADEL&coordinate=${coord}&radius=${radius}km`
-  const res = await fetch(url, { headers: HEADERS })
+type AvailabilityResponseItem = {
+  resource_id?: string
+}
+
+const fetchTenants = async (coord: string, radius: number) => {
+  const url = `${playtomicApi}/tenants?size=100&status=ACTIVE&sport_id=PADEL&coordinate=${coord}&radius=${radius}km`
+  const res = await fetch(url, { headers })
   if (!res.ok) return []
-  const data = await res.json()
-  const tenants = Array.isArray(data) ? data : data.items ?? []
-  return tenants.map((t: any) => ({
-    id: t.tenant_id || t.id,
-    name: t.name,
+  const raw = (await res.json()) as
+    | PlaytomicApiTenant[]
+    | { items?: PlaytomicApiTenant[] }
+  const tenants: PlaytomicApiTenant[] = Array.isArray(raw)
+    ? raw
+    : (raw.items ?? [])
+  return tenants.map((tenant: PlaytomicApiTenant) => ({
+    id: tenant.tenant_id || tenant.id || "",
+    name: tenant.name || tenant.tenant_name || "",
   }))
 }
 
-async function fetchResourceIds(tenantId: string, date: string): Promise<string[]> {
+const fetchResourceIds = async (
+  tenantId: string,
+  date: string,
+): Promise<string[]> => {
   const cacheKey = `availability-${tenantId}-${date}`
-  const cached = serverCache.get<any[]>(cacheKey)
-  const data = cached ?? await (async () => {
-    const url = `${PLAYTOMIC_API}/availability?tenant_id=${tenantId}&sport_id=PADEL&date=${date}`
-    const res = await fetch(url, { headers: HEADERS })
-    if (!res.ok) return []
-    return res.json()
-  })()
+  const cached = serverCache.get<AvailabilityResponseItem[]>(cacheKey)
+  const data =
+    cached ??
+    (await (async () => {
+      const url = `${playtomicApi}/availability?tenant_id=${tenantId}&sport_id=PADEL&date=${date}`
+      const res = await fetch(url, { headers })
+      if (!res.ok) return []
+      return res.json() as Promise<AvailabilityResponseItem[]>
+    })())
   if (!Array.isArray(data)) return []
-  return [...new Set(data.map((item: any) => item.resource_id).filter(Boolean))]
+  return [
+    ...new Set(
+      data
+        .map((item) => item.resource_id)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ]
 }
 
 export async function GET() {
@@ -63,59 +83,64 @@ export async function GET() {
 
   // Fetch all tenants from both locations in parallel
   const [ubudTenants, sanurTenants] = await Promise.all([
-    fetchTenants(LOCATIONS.ubud.coord, LOCATIONS.ubud.radius),
-    fetchTenants(LOCATIONS.sanur.coord, LOCATIONS.sanur.radius),
+    fetchTenants(locations.ubud.coord, locations.ubud.radius),
+    fetchTenants(locations.sanur.coord, locations.sanur.radius),
   ])
 
   // Deduplicate tenants by ID
-  const tenantMap = new Map<string, { id: string; name: string; location: string }>()
-  for (const t of ubudTenants) tenantMap.set(t.id, { ...t, location: "Ubud" })
-  for (const t of sanurTenants) tenantMap.set(t.id, { ...t, location: "Sanur" })
+  const tenantMap = new Map<
+    string,
+    { id: string; name: string; location: string }
+  >()
+  for (const tenant of ubudTenants)
+    tenantMap.set(tenant.id, { ...tenant, location: "Ubud" })
+  for (const tenant of sanurTenants)
+    tenantMap.set(tenant.id, { ...tenant, location: "Sanur" })
   const allTenants = [...tenantMap.values()]
 
   // For each tenant, fetch their resource IDs from today's availability
   const tenantReports = await Promise.all(
     allTenants.map(async (tenant) => {
       const resourceIds = await fetchResourceIds(tenant.id, today)
-      const mapped: string[] = []
-      const unmapped: string[] = []
-
-      for (const resourceId of resourceIds) {
-        const name = getCourtName(tenant.id, resourceId)
-        if (name.startsWith("Court ") && name.length === 14) {
-          // Still a fallback — 8 char hex fragment
-          unmapped.push(resourceId)
-        } else {
-          mapped.push(`${resourceId.substring(0, 8)} → "${name}"`)
-        }
-      }
-
+      const { mapped, unmapped } = resourceIds.reduce<{
+        mapped: string[]
+        unmapped: string[]
+      }>(
+        (acc, resourceId) => {
+          const name = getCourtName(tenant.id, resourceId)
+          if (name.startsWith("Court ") && name.length === 14) {
+            acc.unmapped.push(resourceId)
+          } else {
+            acc.mapped.push(`${resourceId.substring(0, 8)} → "${name}"`)
+          }
+          return acc
+        },
+        { mapped: [], unmapped: [] },
+      )
       return { tenant, resourceIds, mapped, unmapped }
-    })
+    }),
   )
 
   // Build the ready-to-paste snippet for all unmapped courts
-  const snippets: string[] = []
-  const unmappedSummary: any[] = []
-
-  for (const { tenant, unmapped } of tenantReports) {
-    if (unmapped.length === 0) continue
-
+  const unmappedReports = tenantReports.filter(
+    (report) => report.unmapped.length > 0,
+  )
+  const snippets = unmappedReports.flatMap(({ tenant, unmapped }) => {
     const tenantShort = tenant.id.substring(0, 8)
-    snippets.push(`  // ── ${tenant.name} (${tenantShort}) — visit playtomic.io/tenant/${tenant.id}`)
-    for (const resourceId of unmapped) {
-      snippets.push(`  "${tenantShort}::${resourceId.substring(0, 8)}": "??? Court Name ???",`)
-    }
-    snippets.push("")
-
-    unmappedSummary.push({
-      club: tenant.name,
-      location: tenant.location,
-      tenantId: tenant.id,
-      playtomicPage: `https://playtomic.io/tenant/${tenant.id}`,
-      unmappedResourceIds: unmapped,
-    })
-  }
+    const header = `  // ── ${tenant.name} (${tenantShort}) — visit playtomic.io/tenant/${tenant.id}`
+    const lines = unmapped.map(
+      (resourceId) =>
+        `  "${tenantShort}::${resourceId.substring(0, 8)}": "??? Court Name ???",`,
+    )
+    return [header, ...lines, ""]
+  })
+  const unmappedSummary = unmappedReports.map(({ tenant, unmapped }) => ({
+    club: tenant.name,
+    location: tenant.location,
+    tenantId: tenant.id,
+    playtomicPage: `https://playtomic.io/tenant/${tenant.id}`,
+    unmappedResourceIds: unmapped,
+  }))
 
   const allMapped = unmappedSummary.length === 0
 
@@ -124,14 +149,20 @@ export async function GET() {
     date: today,
     summary: {
       totalTenants: allTenants.length,
-      fullyMapped: tenantReports.filter(r => r.unmapped.length === 0 && r.resourceIds.length > 0).length,
+      fullyMapped: tenantReports.filter(
+        (report) =>
+          report.unmapped.length === 0 && report.resourceIds.length > 0,
+      ).length,
       unmappedTenants: unmappedSummary.length,
       status: allMapped ? "ALL_COURTS_MAPPED" : "ACTION_REQUIRED",
     },
     unmappedCourts: unmappedSummary,
     mappedCourts: tenantReports
-      .filter(r => r.mapped.length > 0)
-      .map(r => ({ club: r.tenant.name, courts: r.mapped })),
+      .filter((report) => report.mapped.length > 0)
+      .map((report) => ({
+        club: report.tenant.name,
+        courts: report.mapped,
+      })),
     // Paste this directly into lib/court-names.ts TENANT_COURT_NAMES object
     snippetForCourtNamesTs: allMapped
       ? "// Nothing to add — all courts are mapped!"

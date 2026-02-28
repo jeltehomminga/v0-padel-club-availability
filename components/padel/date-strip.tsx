@@ -1,0 +1,74 @@
+"use client"
+
+import { useEffect, useRef } from "react"
+import { getDateString } from "@/lib/time"
+import { weekdays } from "@/lib/constants"
+
+type DateStripProps = {
+  dates: string[]
+  selected: string
+  onSelect: (date: string) => void
+  onPrefetchDate?: (date: string) => void
+}
+
+export function DateStrip({
+  dates,
+  selected,
+  onSelect,
+  onPrefetchDate,
+}: DateStripProps) {
+  const today = getDateString(0)
+  const tomorrow = getDateString(1)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = scrollRef.current?.querySelector("[data-selected='true']")
+    el?.scrollIntoView({
+      inline: "center",
+      block: "nearest",
+      behavior: "smooth",
+    })
+  }, [selected])
+
+  return (
+    <div
+      ref={scrollRef}
+      className="flex gap-2 overflow-x-auto pb-1 scrollbar-none"
+      style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+    >
+      {dates.map((date) => {
+        const dateObj = new Date(date)
+        const isSelected = date === selected
+        const label =
+          date === today
+            ? "Today"
+            : date === tomorrow
+              ? "Tmrw"
+              : weekdays[dateObj.getDay()]
+        const dayNum = dateObj.getDate()
+
+        return (
+          <button
+            key={date}
+            data-selected={isSelected}
+            onClick={() => onSelect(date)}
+            onMouseEnter={() => onPrefetchDate?.(date)}
+            onFocus={() => onPrefetchDate?.(date)}
+            className={`flex flex-col items-center justify-center min-w-[52px] h-[60px] rounded-xl border text-sm font-medium transition-all shrink-0 cursor-pointer ${
+              isSelected
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
+            }`}
+          >
+            <span className="text-xs leading-none mb-1">{label}</span>
+            <span
+              className={`text-lg leading-none font-semibold ${isSelected ? "" : "text-foreground"}`}
+            >
+              {dayNum}
+            </span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
