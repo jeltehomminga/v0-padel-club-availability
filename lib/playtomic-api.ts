@@ -40,10 +40,10 @@ export interface TimeSlot {
   duration: number
 }
 
-// Location coordinates
+// Location coordinates — Bali is eastern hemisphere, longitude is positive
 const LOCATIONS = {
   ubud: { name: "Ubud", lat: -8.506, lng: 115.262 },
-  sanur: { name: "Sanur", lat: -8.6725, lng: -115.2625 },
+  sanur: { name: "Sanur", lat: -8.700, lng: 115.263 },
 } as const
 
 // Haversine formula for distance calculation
@@ -81,7 +81,11 @@ export class PlaytomicAPI {
     return data ?? []
   }
 
-  async getAllAvailableSlots(location: "ubud" | "sanur", date: string): Promise<TimeSlot[]> {
+  // Returns slots AND the tenants used, so callers don't need to re-fetch tenants
+  private async getSlotsAndTenants(
+    location: "ubud" | "sanur",
+    date: string,
+  ): Promise<{ slots: TimeSlot[]; tenants: PlaytomicTenant[] }> {
     const tenants = await this.getTenants(location)
     const allSlots: TimeSlot[] = []
 
@@ -105,42 +109,42 @@ export class PlaytomicAPI {
       }
     }
 
-    return allSlots.sort((a, b) =>
-      a.date !== b.date ? a.date.localeCompare(b.date) : a.time.localeCompare(b.time)
-    )
+    return { slots: allSlots, tenants }
   }
 
   async getAllSlotsForBothLocations(date: string): Promise<TimeSlot[]> {
-    const [ubudSlots, sanurSlots] = await Promise.all([
-      this.getAllAvailableSlots("ubud", date),
-      this.getAllAvailableSlots("sanur", date),
-    ])
+    // Fetch slots and tenant data in parallel — single fetch per location, no double-fetching
+    const [{ slots: ubudSlots, tenants: ubudTenants }, { slots: sanurSlots, tenants: sanurTenants }] =
+      await Promise.all([this.getSlotsAndTenants("ubud", date), this.getSlotsAndTenants("sanur", date)])
 
-    const [ubudTenants, sanurTenants] = await Promise.all([this.getTenants("ubud"), this.getTenants("sanur")])
     const allTenants = [...ubudTenants, ...sanurTenants]
 
-    // Build location map based on closest distance
+    // Assign each club to exactly one location based on closest distance
     const clubLocationMap = new Map<string, "Ubud" | "Sanur">()
-
     for (const tenant of allTenants) {
       if (!tenant.coordinate?.lat || !tenant.coordinate?.lon) continue
-
-      const distUbud = calculateDistance(tenant.coordinate.lat, tenant.coordinate.lon, LOCATIONS.ubud.lat, LOCATIONS.ubud.lng)
-      const distSanur = calculateDistance(tenant.coordinate.lat, tenant.coordinate.lon, LOCATIONS.sanur.lat, LOCATIONS.sanur.lng)
-
+      const distUbud = calculateDistance(
+        tenant.coordinate.lat, tenant.coordinate.lon,
+        LOCATIONS.ubud.lat, LOCATIONS.ubud.lng,
+      )
+      const distSanur = calculateDistance(
+        tenant.coordinate.lat, tenant.coordinate.lon,
+        LOCATIONS.sanur.lat, LOCATIONS.sanur.lng,
+      )
       clubLocationMap.set(tenant.name, distUbud <= distSanur ? "Ubud" : "Sanur")
     }
 
-    // Filter and deduplicate slots
+    // Deduplicate: keep each slot only for its geographically assigned location
     const allSlots = [...ubudSlots, ...sanurSlots]
-    const deduplicatedSlots = allSlots.filter((slot) => {
-      const assignedLocation = clubLocationMap.get(slot.club)
-      return !assignedLocation || slot.location === assignedLocation
-    })
-
-    return deduplicatedSlots.sort((a, b) =>
-      a.date !== b.date ? a.date.localeCompare(b.date) : a.time.localeCompare(b.time)
-    )
+    return allSlots
+      .filter((slot) => {
+        const assigned = clubLocationMap.get(slot.club)
+        // If we have coordinate data, enforce the assignment; otherwise keep the slot
+        return !assigned || slot.location === assigned
+      })
+      .sort((a, b) =>
+        a.date !== b.date ? a.date.localeCompare(b.date) : a.time.localeCompare(b.time),
+      )
   }
 }
 
