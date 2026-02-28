@@ -82,7 +82,7 @@ function DateStrip({
             key={date}
             data-selected={isSelected}
             onClick={() => onSelect(date)}
-            className={`flex flex-col items-center justify-center min-w-[52px] h-[60px] rounded-lg border text-sm font-medium transition-all shrink-0 cursor-pointer ${
+            className={`flex flex-col items-center justify-center min-w-[52px] h-[60px] rounded-xl border text-sm font-medium transition-all shrink-0 cursor-pointer ${
               isSelected
                 ? "bg-primary text-primary-foreground border-primary"
                 : "bg-card text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
@@ -143,9 +143,9 @@ function SlotCard({ slot, onBook }: { slot: TimeSlot; onBook: (slot: TimeSlot) =
         : new Date(slot.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
 
   return (
-    <div className="bg-card border border-border rounded-lg p-4 flex items-center gap-4 hover:border-primary/30 hover:shadow-sm transition-all">
+    <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-4 hover:border-primary/40 hover:shadow-sm transition-all">
       {/* Time block */}
-      <div className="flex flex-col items-center justify-center bg-muted rounded-md px-3 py-2 shrink-0 min-w-[64px]">
+      <div className="flex flex-col items-center justify-center bg-muted rounded-lg px-3 py-2 shrink-0 min-w-[64px]">
         <span className="text-lg font-semibold text-foreground leading-none">
           {slot.time.slice(0, 5)}
         </span>
@@ -172,7 +172,7 @@ function SlotCard({ slot, onBook }: { slot: TimeSlot; onBook: (slot: TimeSlot) =
         <span className="text-sm font-semibold text-foreground">{formatPrice(slot.price)}</span>
         <button
           onClick={() => onBook(slot)}
-          className="flex items-center gap-1 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-semibold rounded-md hover:opacity-90 transition-opacity cursor-pointer"
+          className="flex items-center gap-1 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-semibold rounded-full hover:opacity-90 transition-opacity cursor-pointer"
         >
           Book
           <ExternalLink className="w-3 h-3" />
@@ -298,12 +298,12 @@ export default function PadelAvailability() {
           {/* Title */}
           <div className="flex items-baseline justify-between">
             <div>
-              <h1 className="text-xl font-semibold text-foreground leading-tight">Padel Courts Bali</h1>
+              <h1 className="font-serif text-2xl text-foreground leading-tight">Padel Courts Bali</h1>
               <p className="text-xs text-muted-foreground mt-0.5">Ubud &amp; Sanur — live availability</p>
             </div>
             <Badge
               variant="outline"
-              className="text-xs text-primary border-primary/30 bg-primary/5 font-medium"
+              className="text-xs text-primary border-primary/40 bg-primary/8 font-medium"
             >
               {filteredSlots.length} slots
             </Badge>
