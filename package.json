@@ -1,5 +1,5 @@
 {
-  "name": "padel-bali",
+  "name": "padel-pulse",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -10,12 +10,14 @@
     "test:run": "vitest run"
   },
   "dependencies": {
+    "@radix-ui/react-dialog": "1.1.4",
     "@radix-ui/react-select": "2.2.6",
     "@radix-ui/react-slot": "1.2.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.564.0",
     "next": "16.1.6",
+    "nuqs": "^2.8.9",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "swr": "^2.4.1",

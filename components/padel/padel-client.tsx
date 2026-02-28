@@ -1,6 +1,13 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import Link from "next/link"
+import { useState, useCallback, useEffect, useRef, useMemo } from "react"
+import {
+  useQueryStates,
+  parseAsString,
+  parseAsStringLiteral,
+  parseAsBoolean,
+} from "nuqs"
 import useSWR, { useSWRConfig } from "swr"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -10,8 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Loader2, RefreshCw, X } from "lucide-react"
-import type { TimeSlot } from "@/lib/playtomic-api"
+import { Loader2, RefreshCw, X, SlidersHorizontal } from "lucide-react"
+import type { TimeSlot, ClubInfo } from "@/lib/playtomic-api"
 import { getNext14Days } from "@/lib/time"
 import {
   durationOptions,
@@ -23,24 +30,60 @@ import { DateStrip } from "@/components/padel/date-strip"
 import { FilterChips } from "@/components/padel/filter-chips"
 import { SlotCard } from "@/components/padel/slot-card"
 import { EmptyState } from "@/components/padel/empty-state"
+import { usePreferences } from "@/hooks/use-preferences"
 
-const slotsFetcher = (url: string) =>
-  fetch(url).then((response) => response.json() as Promise<TimeSlot[]>)
+// Client-side fetch deduplication — prevents duplicate network requests
+// when prefetch + navigation happen for the same URL concurrently.
+const inFlightFetches = new Map<string, Promise<TimeSlot[]>>()
+const slotsFetcher = (url: string): Promise<TimeSlot[]> => {
+  const existing = inFlightFetches.get(url)
+  if (existing) return existing
 
-type PadelClientProps = {
+  const promise = fetch(url)
+    .then((res) => res.json() as Promise<TimeSlot[]>)
+    .finally(() => inFlightFetches.delete(url))
+  inFlightFetches.set(url, promise)
+  return promise
+}
+
+const LOCATIONS = ["all", "Ubud", "Sanur"] as const
+const DURATIONS = ["60+", "60", "90"] as const
+
+type SkipReason = "day-disabled" | "duration-too-long" | null
+
+type PadelClientProps = Readonly<{
   initialSlotCache: Record<string, TimeSlot[]>
   initialDate: string
-}
+  allClubs?: ClubInfo[]
+}>
 
 export default function PadelClient({
   initialSlotCache,
   initialDate,
+  allClubs = [],
 }: PadelClientProps) {
-  const [selectedDate, setSelectedDate] = useState(initialDate)
-  const [selectedLocation, setSelectedLocation] = useState("all")
-  const [selectedClub, setSelectedClub] = useState("all")
-  const [selectedDuration, setSelectedDuration] = useState("90")
+  const [filters, setFilters] = useQueryStates(
+    {
+      date: parseAsString.withDefault(initialDate),
+      location: parseAsStringLiteral(LOCATIONS).withDefault("all"),
+      duration: parseAsStringLiteral(DURATIONS).withDefault("90"),
+      club: parseAsString.withDefault("all"),
+      showAll: parseAsBoolean.withDefault(false),
+    },
+    { clearOnDefault: true },
+  )
+
+  const {
+    date: selectedDate,
+    location: selectedLocation,
+    duration: selectedDuration,
+    club: selectedClub,
+    showAll,
+  } = filters
+
   const [dismissedError, setDismissedError] = useState(false)
+
+  const { prefs, hasActivePrefs } = usePreferences()
 
   const { mutate: globalMutate } = useSWRConfig()
 
@@ -48,30 +91,56 @@ export default function PadelClient({
     setDismissedError(false)
   }, [selectedDate])
 
+  // Determine if we can skip the API call entirely because
+  // the selected duration can't possibly fit the user's preference windows.
+  const skipReason: SkipReason = useMemo(() => {
+    if (showAll || !hasActivePrefs) return null
+
+    const weekday = new Date(`${selectedDate}T12:00:00`).getDay()
+    const dayPref = prefs.availability[weekday]
+
+    if (!dayPref?.enabled) return "day-disabled"
+    if (dayPref.ranges.length === 0) return null
+
+    const durationMinutes = selectedDuration === "90" ? 90 : 60
+    const canFit = dayPref.ranges.some((range) => {
+      const [sh, sm] = range.start.split(":").map(Number)
+      const [eh, em] = range.end.split(":").map(Number)
+      return eh * 60 + em - (sh * 60 + sm) >= durationMinutes
+    })
+    return canFit ? null : "duration-too-long"
+  }, [
+    selectedDate,
+    selectedDuration,
+    prefs.availability,
+    showAll,
+    hasActivePrefs,
+  ])
+
+  const swrKey = skipReason ? null : `/api/playtomic/slots?date=${selectedDate}`
+
+  const hasFallback = selectedDate === initialDate
   const {
     data: timeSlots = [],
     isLoading,
     error,
     mutate,
-  } = useSWR<TimeSlot[]>(
-    `/api/playtomic/slots?date=${selectedDate}`,
-    slotsFetcher,
-    {
-      fallbackData:
-        selectedDate === initialDate
-          ? initialSlotCache[initialDate]
-          : undefined,
-      revalidateOnFocus: false,
-      dedupingInterval: 5 * 60 * 1000,
-    },
-  )
+  } = useSWR<TimeSlot[]>(swrKey, slotsFetcher, {
+    fallbackData: hasFallback ? initialSlotCache[initialDate] : undefined,
+    revalidateOnFocus: false,
+    revalidateIfStale: false,
+    dedupingInterval: 5 * 60 * 1000,
+  })
 
   const dates = getNext14Days()
 
+  const prefetchedDates = useRef(new Set<string>([initialDate]))
   const prefetchDate = useCallback(
     (date: string) => {
+      if (prefetchedDates.current.has(date)) return
+      prefetchedDates.current.add(date)
       const key = `/api/playtomic/slots?date=${date}`
-      void globalMutate(key, slotsFetcher(key))
+      void globalMutate(key, slotsFetcher(key), { revalidate: false })
     },
     [globalMutate],
   )
@@ -82,36 +151,70 @@ export default function PadelClient({
     "60": (duration) => duration === 60,
     "90": (duration) => duration === 90,
   }
+
   const filteredSlots = timeSlots.filter((slot) => {
     const slotTime = new Date(`${slot.date}T${slot.time}`)
-    return (
-      slotTime > cutoff &&
-      durationFilter[selectedDuration]?.(slot.duration) &&
-      (selectedLocation === "all" || slot.location === selectedLocation) &&
-      (selectedClub === "all" || slot.club === selectedClub)
-    )
+    if (slotTime <= cutoff) return false
+    if (!durationFilter[selectedDuration]?.(slot.duration)) return false
+    if (selectedLocation !== "all" && slot.location !== selectedLocation)
+      return false
+
+    if (!showAll) {
+      if (prefs.clubs.length > 0 && !prefs.clubs.includes(slot.club))
+        return false
+
+      const weekday = new Date(slot.date).getDay()
+      const dayPref = prefs.availability[weekday]
+
+      if (!dayPref?.enabled) return false
+
+      if (dayPref.ranges.length > 0) {
+        const t = slot.time.slice(0, 5)
+        const [h, m] = t.split(":").map(Number)
+        const endMinutes = h * 60 + m + slot.duration
+        const slotEnd = `${String(Math.floor(endMinutes / 60)).padStart(2, "0")}:${String(endMinutes % 60).padStart(2, "0")}`
+        const fitsAnyRange = dayPref.ranges.some(
+          (r) => t >= r.start && slotEnd <= r.end,
+        )
+        if (!fitsAnyRange) return false
+      }
+    }
+
+    if (selectedClub !== "all" && slot.club !== selectedClub) return false
+
+    return true
   })
 
   const handleBook = useCallback((slot: TimeSlot) => {
     const url = isMobileDevice()
-      ? playtomicTenantUrl(slot.tenantId)
-      : (clubWebsites[slot.club] ?? playtomicTenantUrl(slot.tenantId))
+      ? playtomicTenantUrl(slot.tenantId, slot.tenantSlug)
+      : (clubWebsites[slot.club] ??
+        playtomicTenantUrl(slot.tenantId, slot.tenantSlug))
     window.open(url, "_blank", "noopener,noreferrer")
   }, [])
 
-  const uniqueClubs = [...new Set(timeSlots.map((slot) => slot.club))].sort(
-    (a, b) => a.localeCompare(b),
-  )
+  const uniqueClubsFromSlots = [
+    ...new Set(timeSlots.map((slot) => slot.club)),
+  ].sort((a, b) => a.localeCompare(b))
+  const allClubNames =
+    allClubs.length > 0
+      ? [...allClubs].map((c) => c.name).sort((a, b) => a.localeCompare(b))
+      : uniqueClubsFromSlots
+  const clubOptions =
+    prefs.clubs.length > 0
+      ? [
+          { value: "all", label: "All saved clubs" },
+          ...prefs.clubs.map((club) => ({ value: club, label: club })),
+        ]
+      : [
+          { value: "all", label: "All clubs" },
+          ...allClubNames.map((club) => ({ value: club, label: club })),
+        ]
 
   const locationOptions = [
     { value: "all", label: "All" },
     { value: "Ubud", label: "Ubud" },
     { value: "Sanur", label: "Sanur" },
-  ]
-
-  const clubOptions = [
-    { value: "all", label: "All clubs" },
-    ...uniqueClubs.map((club) => ({ value: club, label: club })),
   ]
 
   const showErrorBanner = error && !dismissedError
@@ -149,13 +252,21 @@ export default function PadelClient({
           <div className="flex items-baseline justify-between flex-wrap gap-2">
             <div>
               <h1 className="font-serif text-2xl text-foreground leading-tight">
-                Padel Courts Bali
+                PadelPulse
               </h1>
               <p className="text-xs text-muted-foreground mt-0.5">
                 Ubud &amp; Sanur — live availability
               </p>
             </div>
             <div className="flex items-center gap-2">
+              <Link
+                href="/preferences"
+                className="p-1.5 rounded-md hover:bg-muted transition-colors"
+                title="My availability"
+                aria-label="My availability"
+              >
+                <SlidersHorizontal className="w-4 h-4 text-muted-foreground" />
+              </Link>
               <button
                 onClick={() => mutate()}
                 className="p-1.5 rounded-md hover:bg-muted transition-colors"
@@ -175,10 +286,33 @@ export default function PadelClient({
             </div>
           </div>
 
+          {hasActivePrefs && (
+            <div className="flex flex-wrap items-center justify-between gap-2 py-2 px-3 rounded-md bg-muted/50 text-xs">
+              <span className="text-muted-foreground">
+                Filtered by your preferences
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFilters({ showAll: !showAll })}
+                  className="font-medium text-primary hover:underline"
+                >
+                  {showAll ? "Apply filters" : "Show all"}
+                </button>
+                <Link
+                  href="/preferences"
+                  className="font-medium text-primary hover:underline"
+                >
+                  Edit
+                </Link>
+              </div>
+            </div>
+          )}
+
           <DateStrip
             dates={dates}
             selected={selectedDate}
-            onSelect={setSelectedDate}
+            onSelect={(date) => setFilters({ date })}
             onPrefetchDate={prefetchDate}
           />
 
@@ -187,18 +321,27 @@ export default function PadelClient({
               label="Where"
               options={locationOptions}
               selected={selectedLocation}
-              onSelect={setSelectedLocation}
+              onSelect={(location) =>
+                setFilters({ location: location as (typeof LOCATIONS)[number] })
+              }
             />
             <FilterChips
               label="Duration"
-              options={durationOptions}
+              options={
+                durationOptions as unknown as { value: string; label: string }[]
+              }
               selected={selectedDuration}
-              onSelect={setSelectedDuration}
+              onSelect={(duration) =>
+                setFilters({ duration: duration as (typeof DURATIONS)[number] })
+              }
             />
           </div>
 
-          {uniqueClubs.length > 0 && (
-            <Select value={selectedClub} onValueChange={setSelectedClub}>
+          {clubOptions.length > 1 && (
+            <Select
+              value={selectedClub}
+              onValueChange={(club) => setFilters({ club })}
+            >
               <SelectTrigger className="h-8 text-xs w-full border-border bg-background">
                 <SelectValue placeholder="All clubs" />
               </SelectTrigger>
@@ -219,7 +362,17 @@ export default function PadelClient({
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-4 space-y-2">
-        {isLoading ? (
+        {skipReason === "day-disabled" ? (
+          <EmptyState
+            message="Day marked unavailable"
+            subtitle="Toggle 'Show all' to see available slots anyway, or adjust your preferences."
+          />
+        ) : skipReason === "duration-too-long" ? (
+          <EmptyState
+            message={`${selectedDuration}-min slots don\u2019t fit your time window`}
+            subtitle="Try a shorter duration or widen your availability in preferences."
+          />
+        ) : isLoading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>

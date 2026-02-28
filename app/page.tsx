@@ -1,19 +1,42 @@
-import { fetchSlotsForDate, type TimeSlot } from "@/lib/playtomic-api"
+import { redirect } from "next/navigation"
+import {
+  fetchSlotsForDate,
+  fetchAllClubs,
+  type TimeSlot,
+} from "@/lib/playtomic-api"
 import PadelClient from "@/components/padel-client"
+import { getDateString } from "@/lib/time"
 
-const getTodayString = () => new Date().toISOString().split("T")[0]
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
-// Server Component — only fetches today eagerly for fast first paint.
-// Today's data is cached by Next.js (next: { revalidate: 300 }) at the infra level.
-// Other dates are fetched on demand by the client via /api/playtomic/slots,
-// which uses the same server-side cache.
-export default async function Page() {
-  const today = getTodayString()
-  const todaySlots = await fetchSlotsForDate(today)
+// Server Component — fetches initial slots and club list for fast first paint.
+// Both use Next.js server-side cache (slots 5min, clubs 1hr).
+export default async function Page({
+  searchParams,
+}: Readonly<{
+  searchParams: Promise<{ date?: string }>
+}>) {
+  const today = getDateString(0)
+  const { date: rawDate } = await searchParams
 
-  const initialSlotCache: Record<string, TimeSlot[]> = {
-    [today]: todaySlots,
+  if (!rawDate || !DATE_RE.test(rawDate)) {
+    redirect(`/?date=${today}`)
   }
 
-  return <PadelClient initialSlotCache={initialSlotCache} initialDate={today} />
+  const [initialSlots, allClubs] = await Promise.all([
+    fetchSlotsForDate(rawDate),
+    fetchAllClubs(),
+  ])
+
+  const initialSlotCache: Record<string, TimeSlot[]> = {
+    [rawDate]: initialSlots,
+  }
+
+  return (
+    <PadelClient
+      initialSlotCache={initialSlotCache}
+      initialDate={rawDate}
+      allClubs={allClubs}
+    />
+  )
 }
