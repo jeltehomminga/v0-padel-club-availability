@@ -1,6 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { serverCache } from "@/lib/cache"
 
+export const runtime = "nodejs"
+export const dynamic = "force-dynamic"
+
 const LOCATIONS = {
   ubud: { coord: "-8.506,115.262", name: "Ubud" },
   sanur: { coord: "-8.6725,115.2625", name: "Sanur" },
