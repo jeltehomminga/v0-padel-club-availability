@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Clock, Loader2, MapPin, ExternalLink } from "lucide-react"
 import { playtomicAPI, type TimeSlot } from "@/lib/playtomic-api"
+import { isUnmappedCourt } from "@/lib/court-names"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -181,7 +182,12 @@ function SlotCard({
             {slot.location}
           </span>
           <span className="text-xs text-muted-foreground">&middot;</span>
-          <span className="text-xs text-muted-foreground">{formatCourtName(slot.court)}</span>
+          <span
+            className={`text-xs ${isUnmappedCourt(slot.court) ? "text-amber-500 font-medium" : "text-muted-foreground"}`}
+            title={isUnmappedCourt(slot.court) ? "Court name not yet mapped — visit /api/playtomic/discover-courts" : undefined}
+          >
+            {formatCourtName(slot.court)}
+          </span>
           <span className="text-xs text-muted-foreground">&middot;</span>
           <span className="text-xs text-muted-foreground">{dateLabel}</span>
         </div>

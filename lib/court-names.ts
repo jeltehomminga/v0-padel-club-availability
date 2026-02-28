@@ -74,8 +74,20 @@ const TENANT_COURT_NAMES: Record<string, string> = {
  * Returns the human-readable court name for a given tenant + resource UUID pair.
  * Uses only the first 8 characters of each UUID as the key for robustness.
  * Falls back to a short UUID fragment if the pair is not yet in the map.
+ *
+ * To add a new tenant, visit:
+ *   /api/playtomic/discover-courts
+ * It will show you the exact snippet to paste here.
  */
 export function getCourtName(tenantId: string, resourceId: string): string {
   const key = `${tenantId.substring(0, 8)}::${resourceId.substring(0, 8)}`
   return TENANT_COURT_NAMES[key] ?? `Court ${resourceId.substring(0, 8)}`
+}
+
+/**
+ * Returns true if the court name is still an unmapped fallback.
+ * Use this to flag unknown courts in the UI.
+ */
+export function isUnmappedCourt(name: string): boolean {
+  return /^Court [0-9a-f]{8}$/.test(name)
 }
