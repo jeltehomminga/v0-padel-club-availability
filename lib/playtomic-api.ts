@@ -1,5 +1,6 @@
 // Real Playtomic API integration utilities
 import { getCourtName } from "@/lib/court-names"
+import { getFromCache, setInCache } from "@/lib/slot-cache"
 
 // ─── Server-side fetcher (called directly from Server Components) ─────────────
 // Calls Playtomic directly — no API route round-trip.
