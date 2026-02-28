@@ -33,11 +33,9 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    console.log(`[v0] Cache miss for ${cacheKey}, fetching from API`)
     let response = await fetch(url, { headers })
 
     if (!response.ok) {
-      // Try fallback URL
       const fallbackUrlFull = url.replace(baseUrl, fallbackUrl)
       response = await fetch(fallbackUrlFull, { headers })
     }
@@ -49,8 +47,6 @@ export async function GET(request: NextRequest) {
     const data = await response.json()
     const tenants = Array.isArray(data) ? data : data.items || []
 
-    console.log("[v0] Raw tenants data:", JSON.stringify(tenants.slice(0, 2), null, 2))
-
     const mappedTenants = tenants.map((tenant: any) => ({
       id: tenant.tenant_id || tenant.id || tenant._id,
       name: tenant.name || tenant.tenant_name,
@@ -58,17 +54,9 @@ export async function GET(request: NextRequest) {
       coordinate: tenant.address?.coordinate || tenant.coordinate || tenant.coordinates || tenant.location || tenant.coord,
     }))
 
-    console.log("[v0] Mapped tenants:", JSON.stringify(mappedTenants.slice(0, 2), null, 2))
-    console.log(
-      "[v0] Tenant coordinates:",
-      mappedTenants.map((t) => ({ name: t.name, coordinate: t.coordinate })),
-    )
-
     serverCache.set(cacheKey, mappedTenants)
-
     return NextResponse.json(mappedTenants)
-  } catch (error) {
-    console.error("Error fetching tenants:", error)
+  } catch {
     return NextResponse.json({ error: "Failed to fetch tenants" }, { status: 500 })
   }
 }
