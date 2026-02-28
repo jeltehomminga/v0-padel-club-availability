@@ -33,22 +33,15 @@ export async function GET(request: NextRequest) {
 
   for (const url of urls) {
     try {
-      console.log(`[v0] Cache miss for ${cacheKey}, trying availability URL: ${url}`)
       const response = await fetch(url, { headers })
-
-      console.log(`[v0] Availability response status: ${response.status} for ${url}`)
 
       if (response.ok) {
         const contentType = response.headers.get("content-type")
         if (!contentType || !contentType.includes("application/json")) {
-          console.log(`[v0] Non-JSON response from ${url}, content-type: ${contentType}`)
-          const text = await response.text()
-          console.log(`[v0] Response text: ${text.substring(0, 200)}`)
           continue
         }
 
         const data = await response.json()
-        console.log(`[v0] Raw availability data:`, JSON.stringify(data).substring(0, 200))
 
         const availability = Array.isArray(data)
           ? data.map((item: any) => ({
@@ -56,37 +49,21 @@ export async function GET(request: NextRequest) {
               slots:
                 item.slots?.map((slot: any) => ({
                   ...slot,
-                  start_time: (() => {
-                    const originalTime = slot.start_time
-                    const baliTime = convertToBaliTime(originalTime)
-                    console.log(`[v0] Time conversion: ${originalTime} UTC -> ${baliTime} Bali`)
-                    return baliTime
-                  })(),
-                  price:
-                    typeof slot.price === "string"
-                      ? Number.parseInt(slot.price.replace(/[^\d]/g, "")) || 0
-                      : slot.price || 0,
+                  start_time: convertToBaliTime(slot.start_time),
+                  price: typeof slot.price === "string" ? Number.parseInt(slot.price.replace(/[^\d]/g, "")) || 0 : slot.price || 0,
                 })) || [],
             }))
           : []
 
-        console.log(`[v0] Found ${availability.length} availability slots for tenant ${tenantId}`)
-
         serverCache.set(cacheKey, availability)
-
         return NextResponse.json(availability)
       }
-    } catch (error) {
-      console.error(`[v0] Error with availability URL ${url}:`, error)
-      if (error instanceof SyntaxError && error.message.includes("JSON")) {
-        console.log(`[v0] JSON parsing error for ${url}, likely rate limited`)
-      }
+    } catch {
       continue
     }
   }
 
-  console.error(`[v0] All availability URLs failed for tenant ${tenantId}`)
-  return NextResponse.json({ error: "Failed to fetch availability from all endpoints" }, { status: 500 })
+  return NextResponse.json([])
 }
 
 function convertToBaliTime(utcTime: string): string {

@@ -1,43 +1,28 @@
-interface CacheEntry<T> {
-  data: T
+interface CacheEntry {
+  data: any
   timestamp: number
 }
 
+const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+
 class ServerCache {
-  private cache = new Map<string, CacheEntry<any>>()
-  private readonly CACHE_DURATION = 5 * 60 * 1000 // 5 minutes in milliseconds
+  private cache = new Map<string, CacheEntry>()
 
   get<T>(key: string): T | null {
     const entry = this.cache.get(key)
-    if (!entry) return null
-
-    const isExpired = Date.now() - entry.timestamp > this.CACHE_DURATION
-    if (isExpired) {
+    if (!entry || Date.now() - entry.timestamp > CACHE_DURATION) {
       this.cache.delete(key)
       return null
     }
-
-    console.log(`[v0] Cache hit for key: ${key}`)
     return entry.data
   }
 
   set<T>(key: string, data: T): void {
-    this.cache.set(key, {
-      data,
-      timestamp: Date.now(),
-    })
-    console.log(`[v0] Cache set for key: ${key}`)
+    this.cache.set(key, { data, timestamp: Date.now() })
   }
 
   clear(): void {
     this.cache.clear()
-  }
-
-  getStats(): { size: number; keys: string[] } {
-    return {
-      size: this.cache.size,
-      keys: Array.from(this.cache.keys()),
-    }
   }
 }
 
