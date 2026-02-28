@@ -190,7 +190,11 @@ export default function PadelClient({
       ? playtomicTenantUrl(slot.tenantId, slot.tenantSlug)
       : (clubWebsites[slot.club] ??
         playtomicTenantUrl(slot.tenantId, slot.tenantSlug))
-    window.open(url, "_blank", "noopener,noreferrer")
+    if (isMobileDevice()) {
+      globalThis.location.href = url
+    } else {
+      globalThis.open(url, "_blank", "noopener,noreferrer")
+    }
   }, [])
 
   const uniqueClubsFromSlots = [
