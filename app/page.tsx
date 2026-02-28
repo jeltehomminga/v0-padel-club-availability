@@ -17,9 +17,26 @@ const DURATION_OPTIONS = [
   { value: "90", label: "90 min" },
 ] as const
 
-// Playtomic web URL for a club — works as a universal link:
-// iOS/Android open it in the Playtomic app if installed, otherwise falls back to the web.
+// Playtomic universal link — on iOS/Android with the app installed this opens the app directly;
+// without the app it falls back to the Playtomic mobile website.
 const playtomicTenantUrl = (tenantId: string) => `https://playtomic.io/tenant/${tenantId}`
+
+// Verified club websites for desktop users — club name must exactly match the API name.
+// Clubs without a standalone site fall back to their Playtomic page.
+const CLUB_WEBSITES: Record<string, string> = {
+  "Bam Bam Padel Ubud": "https://www.bambampadel.com",
+  "BamBam Padel": "https://www.bambampadel.com",
+  "Monkey Padel Bali": "https://monkeypadelbali.com",
+  "Monkey Padel Bali Sayan Ubud": "https://monkeypadelbali.com",
+  "Simply Padel": "https://simply-padel.com",
+  "Simply Padel Sanur": "https://simply-padel.com",
+  "Padel of Gods": "https://padelofgodsbali.com",
+  "Padel of Gods Bali": "https://padelofgodsbali.com",
+}
+
+const isMobileDevice = () =>
+  typeof navigator !== "undefined" &&
+  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
@@ -127,7 +144,15 @@ function FilterChips({
   )
 }
 
-function SlotCard({ slot, onBook }: { slot: TimeSlot; onBook: (slot: TimeSlot) => void }) {
+function SlotCard({
+  slot,
+  onBook,
+  hasClubSite,
+}: {
+  slot: TimeSlot
+  onBook: (slot: TimeSlot) => void
+  hasClubSite: boolean
+}) {
   const today = getDateString(0)
   const tomorrow = getDateString(1)
   const dateLabel =
@@ -167,6 +192,7 @@ function SlotCard({ slot, onBook }: { slot: TimeSlot; onBook: (slot: TimeSlot) =
         <span className="text-sm font-semibold text-foreground">{formatPrice(slot.price)}</span>
         <button
           onClick={() => onBook(slot)}
+          title={hasClubSite ? `Visit ${slot.club} website to book` : "Book via Playtomic"}
           className="flex items-center gap-1 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-semibold rounded-full hover:opacity-90 transition-opacity cursor-pointer"
         >
           Book
@@ -230,11 +256,14 @@ export default function PadelAvailability() {
   }, [timeSlots, selectedDuration, selectedLocation, selectedClub])
 
   const handleBook = (slot: TimeSlot) => {
-    // playtomic.io/tenant/{id} is a universal link:
-    // - On iOS/Android with Playtomic installed → opens the app directly on the club's booking page
-    // - On iOS/Android without the app → opens the Playtomic mobile web
-    // - On desktop → opens the Playtomic web booking page for the club
-    window.open(playtomicTenantUrl(slot.tenantId), "_blank", "noopener,noreferrer")
+    const url = isMobileDevice()
+      // Universal link: iOS/Android intercept this and open the Playtomic app if installed,
+      // otherwise fall back to the Playtomic mobile website — no fake scheme needed.
+      ? playtomicTenantUrl(slot.tenantId)
+      // Desktop: go to the club's own website when available, else their Playtomic page.
+      : (CLUB_WEBSITES[slot.club] ?? playtomicTenantUrl(slot.tenantId))
+
+    window.open(url, "_blank", "noopener,noreferrer")
   }
 
   const dates = getNext14Days()
@@ -339,7 +368,12 @@ export default function PadelAvailability() {
       <main className="max-w-3xl mx-auto px-4 py-4 space-y-2">
         {filteredSlots.length > 0 ? (
           filteredSlots.map((slot) => (
-            <SlotCard key={slot.id} slot={slot} onBook={handleBook} />
+            <SlotCard
+              key={slot.id}
+              slot={slot}
+              onBook={handleBook}
+              hasClubSite={!!CLUB_WEBSITES[slot.club]}
+            />
           ))
         ) : (
           <div className="flex flex-col items-center justify-center py-20 text-center">
