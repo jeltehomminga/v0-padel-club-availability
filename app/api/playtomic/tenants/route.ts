@@ -1,8 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { serverCache } from "@/lib/cache"
 
 export const runtime = "nodejs"
-export const dynamic = "force-dynamic"
+export const dynamic = "force-static"
+
+const TENANTS_TTL = 10 * 60 // 10 minutes in seconds
 
 const LOCATIONS = {
   ubud: { coord: "-8.506,115.262", name: "Ubud" },
@@ -17,14 +18,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Invalid location" }, { status: 400 })
   }
 
-  const cacheKey = `tenants-v3-${location}`
-  const cachedData = serverCache.get(cacheKey)
-  if (cachedData) {
-    return NextResponse.json(cachedData)
-  }
-
   const { coord } = LOCATIONS[location]
-  const radius = 8000 // Reduced search radius from 20km to 8km to exclude distant clubs like Jimbaran and Canggu
+  const radius = 8000
   const baseUrl = "https://api.playtomic.io/v1"
   const fallbackUrl = "https://playtomic.io/api/v1"
 
@@ -36,11 +31,12 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    let response = await fetch(url, { headers })
+    // next.revalidate caches at the CDN/infra level — survives serverless cold starts
+    let response = await fetch(url, { headers, next: { revalidate: TENANTS_TTL } })
 
     if (!response.ok) {
       const fallbackUrlFull = url.replace(baseUrl, fallbackUrl)
-      response = await fetch(fallbackUrlFull, { headers })
+      response = await fetch(fallbackUrlFull, { headers, next: { revalidate: TENANTS_TTL } })
     }
 
     if (!response.ok) {
@@ -57,7 +53,6 @@ export async function GET(request: NextRequest) {
       coordinate: tenant.address?.coordinate || tenant.coordinate || tenant.coordinates || tenant.location || tenant.coord,
     }))
 
-    serverCache.set(cacheKey, mappedTenants)
     return NextResponse.json(mappedTenants)
   } catch {
     return NextResponse.json({ error: "Failed to fetch tenants" }, { status: 500 })
