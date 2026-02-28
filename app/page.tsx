@@ -17,11 +17,9 @@ const DURATION_OPTIONS = [
   { value: "90", label: "90 min" },
 ] as const
 
-const CLUB_WEBSITES: Record<string, string> = {
-  "Bisma Padel": "https://www.bismapadel.com",
-  "Padel of Gods": "https://www.padelofgods.com",
-  "Simply Padel Sanur": "https://www.simplypadel.com",
-}
+// Playtomic web URL for a club — works as a universal link:
+// iOS/Android open it in the Playtomic app if installed, otherwise falls back to the web.
+const playtomicTenantUrl = (tenantId: string) => `https://playtomic.io/tenant/${tenantId}`
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
@@ -40,9 +38,6 @@ const formatCourtName = (name: string) => {
   if (/^[0-9a-f]{8}-/.test(name)) return `Court ${name.slice(-8, -4).toUpperCase()}`
   return name.startsWith("Court") ? name : `Court ${name}`
 }
-
-const isMobileDevice = () =>
-  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -235,17 +230,11 @@ export default function PadelAvailability() {
   }, [timeSlots, selectedDuration, selectedLocation, selectedClub])
 
   const handleBook = (slot: TimeSlot) => {
-    const mobile = isMobileDevice()
-    const url = mobile
-      ? `playtomic://book/${slot.club}/${slot.date}/${slot.time}`
-      : CLUB_WEBSITES[slot.club] ?? "https://playtomic.io"
-
-    if (mobile && url.startsWith("playtomic://")) {
-      window.location.href = url
-      setTimeout(() => window.open("https://playtomic.io", "_blank"), 1000)
-    } else {
-      window.open(url, "_blank")
-    }
+    // playtomic.io/tenant/{id} is a universal link:
+    // - On iOS/Android with Playtomic installed → opens the app directly on the club's booking page
+    // - On iOS/Android without the app → opens the Playtomic mobile web
+    // - On desktop → opens the Playtomic web booking page for the club
+    window.open(playtomicTenantUrl(slot.tenantId), "_blank", "noopener,noreferrer")
   }
 
   const dates = getNext14Days()

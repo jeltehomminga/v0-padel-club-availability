@@ -30,6 +30,7 @@ export interface PlaytomicAvailability {
 
 export interface TimeSlot {
   id: string
+  tenantId: string
   club: string
   location: "Ubud" | "Sanur"
   date: string
@@ -96,6 +97,7 @@ export class PlaytomicAPI {
         for (const slot of avail.slots) {
           allSlots.push({
             id: `${tenant.id}-${avail.resource_id}-${avail.start_date}-${slot.start_time}`,
+            tenantId: tenant.id,
             club: tenant.name,
             location: LOCATIONS[location].name as "Ubud" | "Sanur",
             date: avail.start_date,
