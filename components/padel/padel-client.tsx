@@ -190,7 +190,7 @@ export default function PadelClient({
     const url = mobile
       ? playtomicTenantUrl(slot.tenantId)
       : (clubWebsites[slot.club] ??
-        playtomicTenantUrl(slot.tenantId, slot.tenantSlug))
+        playtomicTenantUrl(slot.tenantId, slot.tenantSlug, slot.date))
     globalThis.open(url, "_blank", "noopener,noreferrer")
   }, [])
 

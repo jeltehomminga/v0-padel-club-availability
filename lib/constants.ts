@@ -14,10 +14,15 @@ export const durationOptions = [
   { value: "90", label: "90 min" },
 ] as const
 
-export const playtomicTenantUrl = (tenantId: string, slug?: string) =>
-  slug
-    ? `https://playtomic.io/${slug}/${tenantId}`
-    : `https://playtomic.io/tenant/${tenantId}`
+export const playtomicTenantUrl = (
+  tenantId: string,
+  slug?: string,
+  date?: string,
+) => {
+  const qs = date ? `?date=${date}` : ""
+  if (slug) return `https://playtomic.com/clubs/${slug}${qs}`
+  return `https://playtomic.io/tenant/${tenantId}${qs}`
+}
 
 export const clubWebsites: Record<string, string> = {
   "Bam Bam Padel Ubud": "https://www.bambampadel.com",
