@@ -5,7 +5,15 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Clock, Loader2, MapPin, ExternalLink } from "lucide-react"
-import { fetchSlotsForDate, type TimeSlot } from "@/lib/playtomic-api"
+import type { TimeSlot } from "@/lib/playtomic-api"
+
+// Fetches slots for a date via the API route — cached server-side with Next.js fetch cache,
+// so the browser also benefits from Cache-Control headers on repeated requests.
+async function fetchSlotsForDateClient(date: string): Promise<TimeSlot[]> {
+  const res = await fetch(`/api/playtomic/slots?date=${date}`)
+  if (!res.ok) return []
+  return res.json()
+}
 import { isUnmappedCourt } from "@/lib/court-names"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -226,7 +234,7 @@ export default function PadelClient({
   useEffect(() => {
     if (slotCache[selectedDate]) return
     setLoadingDate(selectedDate)
-    fetchSlotsForDate(selectedDate)
+    fetchSlotsForDateClient(selectedDate)
       .then((slots) => {
         setSlotCache((prev) => ({ ...prev, [selectedDate]: slots }))
       })
