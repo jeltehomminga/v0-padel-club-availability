@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Invalid location" }, { status: 400 })
   }
 
-  const cacheKey = `tenants-v2-${location}`
+  const cacheKey = `tenants-v3-${location}`
   const cachedData = serverCache.get(cacheKey)
   if (cachedData) {
     return NextResponse.json(cachedData)
@@ -56,6 +56,11 @@ export async function GET(request: NextRequest) {
       address: tenant.address,
       coordinate: tenant.address?.coordinate || tenant.coordinate || tenant.coordinates || tenant.location || tenant.coord,
     }))
+
+    // Log every tenant so we can correlate tenant IDs with club names
+    mappedTenants.forEach((t: any) => {
+      console.log(`[v0-map] location=${location} tenant=${t.id} name="${t.name}"`)
+    })
 
     serverCache.set(cacheKey, mappedTenants)
     return NextResponse.json(mappedTenants)
