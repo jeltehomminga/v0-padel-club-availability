@@ -91,6 +91,8 @@ export class PlaytomicAPI {
       for (const avail of availability) {
         // Resolve human-readable court name using tenant+resource pair
         const court = getCourtName(tenant.id, avail.resource_id)
+        console.log(`[v0] club="${tenant.name}" tenant="${tenant.id}" resource="${avail.resource_id}" → "${court}"`)
+
 
         for (const slot of avail.slots) {
           allSlots.push({
