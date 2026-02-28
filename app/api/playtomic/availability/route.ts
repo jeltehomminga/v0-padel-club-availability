@@ -46,6 +46,12 @@ export async function GET(request: NextRequest) {
 
         const data = await response.json()
 
+        // Log raw shape of first item to see if resource names are embedded
+        if (Array.isArray(data) && data.length > 0) {
+          console.log("[v0] Raw availability item keys:", Object.keys(data[0]))
+          console.log("[v0] Raw availability first item:", JSON.stringify(data[0]).substring(0, 500))
+        }
+
         const availability = Array.isArray(data)
           ? data.map((item: any) => ({
               ...item,
