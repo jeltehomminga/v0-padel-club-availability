@@ -1,8 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { serverCache } from "@/lib/cache"
 
 export const runtime = "nodejs"
-export const dynamic = "force-dynamic"
+// Allow Next.js fetch cache to work — do not force-dynamic globally
+export const dynamic = "force-static"
+
+const AVAILABILITY_TTL = 5 * 60 // 5 minutes in seconds
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -11,12 +13,6 @@ export async function GET(request: NextRequest) {
 
   if (!tenantId || !date) {
     return NextResponse.json({ error: "tenant_id and date are required" }, { status: 400 })
-  }
-
-  const cacheKey = `availability-${tenantId}-${date}`
-  const cachedData = serverCache.get(cacheKey)
-  if (cachedData) {
-    return NextResponse.json(cachedData)
   }
 
   const startMin = `${date}T00:00:00`
@@ -36,7 +32,11 @@ export async function GET(request: NextRequest) {
 
   for (const url of urls) {
     try {
-      const response = await fetch(url, { headers })
+      // next.revalidate caches at the CDN/infra level — survives serverless cold starts
+      const response = await fetch(url, {
+        headers,
+        next: { revalidate: AVAILABILITY_TTL },
+      })
 
       if (response.ok) {
         const contentType = response.headers.get("content-type")
@@ -58,7 +58,6 @@ export async function GET(request: NextRequest) {
             }))
           : []
 
-        serverCache.set(cacheKey, availability)
         return NextResponse.json(availability)
       }
     } catch {
