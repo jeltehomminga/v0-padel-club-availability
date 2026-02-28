@@ -116,15 +116,8 @@ export class PlaytomicAPI {
       try {
         const availability = await this.getAvailability(tenant.id, date)
 
-        // Try to get resources for court names, but don't fail if it doesn't work
-        let resourceMap = new Map<string, string>()
-        try {
-          const resources = await this.getResources(tenant.id)
-          resourceMap = new Map(resources.map((r) => [r.id, r.name]))
-          console.log(`[v0] Got ${resources.length} resources for ${tenant.name}`)
-        } catch (error) {
-          console.log(`[v0] Could not get resources for ${tenant.name}, using resource IDs as names`)
-        }
+        // Resources API is not reliable, use resource IDs as court names directly
+        const resourceMap = new Map<string, string>()
 
         console.log(`[v0] Processing ${availability.length} availability entries for ${tenant.name}`)
 
