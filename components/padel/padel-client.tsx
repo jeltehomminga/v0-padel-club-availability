@@ -194,23 +194,50 @@ export default function PadelClient({
     globalThis.open(url, "_blank", "noopener,noreferrer")
   }, [])
 
-  const uniqueClubsFromSlots = [
-    ...new Set(timeSlots.map((slot) => slot.club)),
-  ].sort((a, b) => a.localeCompare(b))
-  const allClubNames =
+  const locationFilteredClubs =
     allClubs.length > 0
-      ? [...allClubs].map((c) => c.name).sort((a, b) => a.localeCompare(b))
-      : uniqueClubsFromSlots
+      ? [...allClubs]
+          .filter(
+            (c) =>
+              selectedLocation === "all" || c.location === selectedLocation,
+          )
+          .map((c) => c.name)
+          .sort((a, b) => a.localeCompare(b))
+      : [
+          ...new Set(
+            timeSlots
+              .filter(
+                (s) =>
+                  selectedLocation === "all" || s.location === selectedLocation,
+              )
+              .map((s) => s.club),
+          ),
+        ].sort((a, b) => a.localeCompare(b))
+
   const clubOptions =
     prefs.clubs.length > 0
       ? [
           { value: "all", label: "All saved clubs" },
-          ...prefs.clubs.map((club) => ({ value: club, label: club })),
+          ...prefs.clubs
+            .filter((club) => locationFilteredClubs.includes(club))
+            .map((club) => ({ value: club, label: club })),
         ]
       : [
           { value: "all", label: "All clubs" },
-          ...allClubNames.map((club) => ({ value: club, label: club })),
+          ...locationFilteredClubs.map((club) => ({
+            value: club,
+            label: club,
+          })),
         ]
+
+  useEffect(() => {
+    if (
+      selectedClub !== "all" &&
+      !locationFilteredClubs.includes(selectedClub)
+    ) {
+      setFilters({ club: "all" })
+    }
+  }, [selectedLocation]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const locationOptions = [
     { value: "all", label: "All" },
