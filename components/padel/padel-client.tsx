@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Loader2, RefreshCw, X, SlidersHorizontal } from "lucide-react"
+import { ThemeToggle } from "@/components/theme-toggle"
 import type { TimeSlot, ClubInfo } from "@/lib/playtomic-api"
 import { getNext14Days } from "@/lib/time"
 import {
@@ -338,12 +339,13 @@ export default function PadelClient({
           </div>
         </div>
       )}
-      <header className="sticky top-0 z-20 bg-card border-b border-border">
+      <header className="sticky top-0 z-20 bg-card/95 backdrop-blur-sm border-b border-border">
+        <div className="h-0.5 bg-gradient-to-r from-primary via-accent to-primary" />
         <div className="max-w-3xl mx-auto px-4 pt-4 pb-3 space-y-3">
           <div className="flex items-baseline justify-between flex-wrap gap-2">
             <div>
-              <h1 className="font-serif text-2xl text-foreground leading-tight">
-                PadelPulse
+              <h1 className="font-brand text-2xl font-extrabold tracking-tight text-foreground leading-tight">
+                <span className="text-primary">Court</span>Scout
               </h1>
               <p className="text-xs text-muted-foreground mt-0.5">
                 Ubud &amp; Sanur — live availability
@@ -371,6 +373,7 @@ export default function PadelClient({
                   className={`w-4 h-4 text-muted-foreground ${isLoading ? "animate-spin" : ""}`}
                 />
               </button>
+              <ThemeToggle />
               <Badge
                 variant="outline"
                 className="text-xs text-primary border-primary/40 bg-primary/8 font-medium"
@@ -490,13 +493,18 @@ export default function PadelClient({
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>
         ) : filteredSlots.length > 0 ? (
-          filteredSlots.map((slot) => (
-            <SlotCard
+          filteredSlots.map((slot, index) => (
+            <div
               key={slot.id}
-              slot={slot}
-              onBook={handleBook}
-              hasClubSite={!!clubWebsites[slot.club]}
-            />
+              className="motion-safe:animate-[slideUp_0.3s_ease-out_both]"
+              style={{ animationDelay: `${Math.min(index * 50, 600)}ms` }}
+            >
+              <SlotCard
+                slot={slot}
+                onBook={handleBook}
+                hasClubSite={!!clubWebsites[slot.club]}
+              />
+            </div>
           ))
         ) : (
           <EmptyState />

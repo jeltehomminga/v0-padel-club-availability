@@ -24,10 +24,10 @@ export function FilterChips({
             key={opt.value}
             aria-pressed={selected === opt.value}
             onClick={() => onSelect(opt.value)}
-            className={`px-3 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer ${
               selected === opt.value
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-card text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
+                ? "bg-primary text-primary-foreground border-primary shadow-sm shadow-primary/20 font-semibold"
+                : "bg-card text-muted-foreground border-border hover:border-primary/30 hover:bg-primary/5 hover:text-foreground active:scale-95"
             }`}
           >
             {opt.label}
