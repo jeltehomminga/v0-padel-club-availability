@@ -9,7 +9,7 @@ type EmptyStateProps = Readonly<{
 
 export function EmptyState({
   message = "No slots available",
-  subtitle = "Try a different date, location, or duration.",
+  subtitle = "Try a different date, time, location, or duration.",
 }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">

@@ -24,10 +24,12 @@ import {
   durationOptions,
   clubWebsites,
   playtomicTenantUrl,
+  weekdays,
 } from "@/lib/constants"
 import { isMobileDevice } from "@/lib/device"
 import { DateStrip } from "@/components/padel/date-strip"
 import { FilterChips } from "@/components/padel/filter-chips"
+import { TimeFilter } from "@/components/padel/time-filter"
 import { SlotCard } from "@/components/padel/slot-card"
 import { EmptyState } from "@/components/padel/empty-state"
 import { usePreferences } from "@/hooks/use-preferences"
@@ -51,6 +53,53 @@ const DURATIONS = ["60+", "60", "90"] as const
 
 type SkipReason = "day-disabled" | "duration-too-long" | null
 
+function PreferencesSummary({
+  prefs,
+  selectedDate,
+  showAll,
+}: Readonly<{
+  prefs: {
+    availability: Record<
+      number,
+      { enabled: boolean; ranges: { start: string; end: string }[] }
+    >
+    clubs: string[]
+  }
+  selectedDate: string
+  showAll: boolean
+}>) {
+  if (showAll) {
+    return (
+      <p className="text-muted-foreground/70 italic">
+        Schedule paused — showing all slots
+      </p>
+    )
+  }
+
+  const weekday = new Date(`${selectedDate}T12:00:00`).getDay()
+  const dayPref = prefs.availability[weekday]
+  const dayLabel = weekdays[weekday]
+
+  const parts: string[] = []
+
+  if (!dayPref?.enabled) {
+    parts.push(`${dayLabel}: day off`)
+  } else if (dayPref.ranges.length > 0) {
+    const windows = dayPref.ranges.map((r) => `${r.start}–${r.end}`).join(", ")
+    parts.push(`${dayLabel}: ${windows}`)
+  } else {
+    parts.push(`${dayLabel}: all hours`)
+  }
+
+  if (prefs.clubs.length > 0) {
+    parts.push(
+      `${prefs.clubs.length} club${prefs.clubs.length === 1 ? "" : "s"}`,
+    )
+  }
+
+  return <p className="text-muted-foreground/70">{parts.join(" · ")}</p>
+}
+
 type PadelClientProps = Readonly<{
   initialSlotCache: Record<string, TimeSlot[]>
   initialDate: string
@@ -69,6 +118,8 @@ export default function PadelClient({
       duration: parseAsStringLiteral(DURATIONS).withDefault("90"),
       club: parseAsString.withDefault("all"),
       showAll: parseAsBoolean.withDefault(false),
+      timeFrom: parseAsString.withDefault(""),
+      timeTo: parseAsString.withDefault(""),
     },
     { clearOnDefault: true },
   )
@@ -79,6 +130,8 @@ export default function PadelClient({
     duration: selectedDuration,
     club: selectedClub,
     showAll,
+    timeFrom,
+    timeTo,
   } = filters
 
   const [dismissedError, setDismissedError] = useState(false)
@@ -158,6 +211,16 @@ export default function PadelClient({
     if (!durationFilter[selectedDuration]?.(slot.duration)) return false
     if (selectedLocation !== "all" && slot.location !== selectedLocation)
       return false
+
+    // Inline time filter — always applied when set, independent of "Show all"
+    if (timeFrom || timeTo) {
+      const slotStart = slot.time.slice(0, 5)
+      const [h, m] = slotStart.split(":").map(Number)
+      const endMinutes = h * 60 + m + slot.duration
+      const slotEnd = `${String(Math.floor(endMinutes / 60)).padStart(2, "0")}:${String(endMinutes % 60).padStart(2, "0")}`
+      if (timeFrom && slotStart < timeFrom) return false
+      if (timeTo && slotEnd > timeTo) return false
+    }
 
     if (!showAll) {
       if (prefs.clubs.length > 0 && !prefs.clubs.includes(slot.club))
@@ -289,11 +352,14 @@ export default function PadelClient({
             <div className="flex items-center gap-2">
               <Link
                 href="/preferences"
-                className="p-1.5 rounded-md hover:bg-muted transition-colors"
-                title="My availability"
-                aria-label="My availability"
+                className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                title="Set your weekly availability schedule"
+                aria-label="My weekly schedule"
               >
-                <SlidersHorizontal className="w-4 h-4 text-muted-foreground" />
+                <SlidersHorizontal className="w-4 h-4" />
+                <span className="text-xs font-medium hidden sm:inline">
+                  Schedule
+                </span>
               </Link>
               <button
                 onClick={() => mutate()}
@@ -315,25 +381,37 @@ export default function PadelClient({
           </div>
 
           {hasActivePrefs && (
-            <div className="flex flex-wrap items-center justify-between gap-2 py-2 px-3 rounded-md bg-muted/50 text-xs">
-              <span className="text-muted-foreground">
-                Filtered by your preferences
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setFilters({ showAll: !showAll })}
-                  className="font-medium text-primary hover:underline"
-                >
-                  {showAll ? "Apply filters" : "Show all"}
-                </button>
-                <Link
-                  href="/preferences"
-                  className="font-medium text-primary hover:underline"
-                >
-                  Edit
-                </Link>
+            <div className="py-2 px-3 rounded-md bg-muted/50 text-xs space-y-1">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-muted-foreground font-medium">
+                  Weekly schedule active
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFilters({ showAll: !showAll })}
+                    className="font-medium text-primary hover:underline"
+                    title={
+                      showAll
+                        ? "Re-apply your saved weekly schedule"
+                        : "Temporarily ignore your weekly schedule"
+                    }
+                  >
+                    {showAll ? "Apply schedule" : "Show all"}
+                  </button>
+                  <Link
+                    href="/preferences"
+                    className="font-medium text-primary hover:underline"
+                  >
+                    Edit
+                  </Link>
+                </div>
               </div>
+              <PreferencesSummary
+                prefs={prefs}
+                selectedDate={selectedDate}
+                showAll={showAll}
+              />
             </div>
           )}
 
@@ -365,6 +443,13 @@ export default function PadelClient({
             />
           </div>
 
+          <TimeFilter
+            from={timeFrom}
+            to={timeTo}
+            onChange={(from, to) => setFilters({ timeFrom: from, timeTo: to })}
+            onClear={() => setFilters({ timeFrom: "", timeTo: "" })}
+          />
+
           {clubOptions.length > 1 && (
             <Select
               value={selectedClub}
@@ -392,13 +477,13 @@ export default function PadelClient({
       <main className="max-w-3xl mx-auto px-4 py-4 space-y-2">
         {skipReason === "day-disabled" ? (
           <EmptyState
-            message="Day marked unavailable"
-            subtitle="Toggle 'Show all' to see available slots anyway, or adjust your preferences."
+            message="Day marked unavailable in your schedule"
+            subtitle="Toggle 'Show all' above to see slots anyway, or edit your weekly schedule."
           />
         ) : skipReason === "duration-too-long" ? (
           <EmptyState
-            message={`${selectedDuration}-min slots don\u2019t fit your time window`}
-            subtitle="Try a shorter duration or widen your availability in preferences."
+            message={`${selectedDuration}-min slots don\u2019t fit your schedule window`}
+            subtitle="Try a shorter duration, adjust the time filter above, or widen your weekly schedule."
           />
         ) : isLoading ? (
           <div className="flex items-center justify-center py-20">
