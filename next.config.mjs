@@ -18,6 +18,24 @@ const nextConfig = {
       "next/dist/build/polyfills/polyfill-module": "./lib/modern-polyfill.js",
     },
   },
+
+  // Permanent redirects from deprecated padelpulse.space → courtscout.app
+  async redirects() {
+    return [
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'padelpulse.space' }],
+        destination: 'https://courtscout.app/:path*',
+        permanent: true,
+      },
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'www.padelpulse.space' }],
+        destination: 'https://courtscout.app/:path*',
+        permanent: true,
+      },
+    ]
+  },
 }
 
 export default nextConfig
