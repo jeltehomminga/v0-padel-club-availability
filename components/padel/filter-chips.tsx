@@ -12,7 +12,7 @@ export function FilterChips({
   options,
   selected,
   onSelect,
-}: FilterChipsProps) {
+}: Readonly<FilterChipsProps>) {
   return (
     <div className="flex items-center gap-2 flex-wrap">
       <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide shrink-0">
@@ -22,6 +22,7 @@ export function FilterChips({
         {options.map((opt) => (
           <button
             key={opt.value}
+            aria-pressed={selected === opt.value}
             onClick={() => onSelect(opt.value)}
             className={`px-3 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer ${
               selected === opt.value
