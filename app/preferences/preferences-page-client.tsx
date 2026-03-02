@@ -26,7 +26,7 @@ export function PreferencesPageClient({
           >
             <ArrowLeft className="w-5 h-5" />
           </Link>
-          <h1 className="font-serif text-xl text-foreground">
+          <h1 className="font-brand text-xl text-foreground">
             My availability
           </h1>
         </div>

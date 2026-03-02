@@ -16,7 +16,7 @@ export default function Error({
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
       <div className="max-w-md w-full text-center space-y-4">
-        <h2 className="font-serif text-2xl text-foreground">
+        <h2 className="font-brand text-2xl text-foreground">
           Something went wrong
         </h2>
         <p className="text-sm text-muted-foreground">

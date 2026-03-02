@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og"
 
-export const alt = "PadelPulse — Live Court Availability in Ubud & Sanur"
+export const alt = "CourtScout — Live Court Availability in Ubud & Sanur"
 export const size = { width: 1200, height: 630 }
 export const contentType = "image/png"
 
@@ -69,7 +69,7 @@ export default async function OGImage() {
           height: 500,
           borderRadius: "50%",
           background:
-            "radial-gradient(circle, rgba(232,96,60,0.25) 0%, transparent 70%)",
+            "radial-gradient(circle, rgba(37,99,235,0.25) 0%, transparent 70%)",
         }}
       />
       <div
@@ -138,7 +138,7 @@ export default async function OGImage() {
               textTransform: "uppercase" as const,
             }}
           >
-            PadelPulse
+            CourtScout
           </div>
         </div>
 
@@ -155,7 +155,7 @@ export default async function OGImage() {
           }}
         >
           <span>Find Open Courts</span>
-          <span style={{ color: "#e8603c" }}>in Ubud & Sanur</span>
+          <span style={{ color: "#2563eb" }}>in Ubud & Sanur</span>
         </div>
 
         {/* Subtitle */}
@@ -179,7 +179,7 @@ export default async function OGImage() {
             right: 0,
             height: 6,
             background:
-              "linear-gradient(90deg, #e8603c 0%, #ffd700 50%, #e8603c 100%)",
+              "linear-gradient(90deg, #2563eb 0%, #60a5fa 50%, #2563eb 100%)",
           }}
         />
       </div>

@@ -57,15 +57,15 @@ export function DateStrip({
             onClick={() => onSelect(date)}
             onMouseEnter={() => onPrefetchDate?.(date)}
             onFocus={() => onPrefetchDate?.(date)}
-            className={`flex flex-col items-center justify-center min-w-[52px] h-[60px] rounded-xl border text-sm font-medium transition-all shrink-0 cursor-pointer ${
+            className={`flex flex-col items-center justify-center min-w-[52px] h-[60px] rounded-2xl border text-sm font-medium transition-all shrink-0 cursor-pointer ${
               isSelected
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-card text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
+                ? "bg-primary text-primary-foreground border-primary shadow-md shadow-primary/25 scale-105"
+                : "bg-card text-muted-foreground border-border hover:border-primary/30 hover:bg-primary/5 hover:text-foreground"
             }`}
           >
-            <span className="text-xs leading-none mb-1">{label}</span>
+            <span className="text-[11px] leading-none mb-1 uppercase tracking-wide">{label}</span>
             <span
-              className={`text-lg leading-none font-semibold ${isSelected ? "" : "text-foreground"}`}
+              className={`text-lg leading-none font-brand font-bold ${isSelected ? "" : "text-foreground"}`}
             >
               {dayNum}
             </span>
