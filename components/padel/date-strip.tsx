@@ -31,8 +31,9 @@ export function DateStrip({
   }, [selected])
 
   return (
-    <div
+    <nav
       ref={scrollRef}
+      aria-label="Select date"
       className="flex gap-2 overflow-x-auto pb-1 scrollbar-none"
       style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
     >
@@ -51,6 +52,8 @@ export function DateStrip({
           <button
             key={date}
             data-selected={isSelected}
+            aria-pressed={isSelected}
+            aria-label={`${label === "Today" ? "Today" : label === "Tmrw" ? "Tomorrow" : label}, ${dayNum}`}
             onClick={() => onSelect(date)}
             onMouseEnter={() => onPrefetchDate?.(date)}
             onFocus={() => onPrefetchDate?.(date)}
@@ -69,6 +72,6 @@ export function DateStrip({
           </button>
         )
       })}
-    </div>
+    </nav>
   )
 }

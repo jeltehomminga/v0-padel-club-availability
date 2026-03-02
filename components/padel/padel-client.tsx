@@ -70,7 +70,7 @@ function PreferencesSummary({
 }>) {
   if (showAll) {
     return (
-      <p className="text-muted-foreground/70 italic">
+      <p className="text-muted-foreground italic">
         Schedule paused — showing all slots
       </p>
     )
@@ -97,7 +97,7 @@ function PreferencesSummary({
     )
   }
 
-  return <p className="text-muted-foreground/70">{parts.join(" · ")}</p>
+  return <p className="text-muted-foreground">{parts.join(" · ")}</p>
 }
 
 type PadelClientProps = Readonly<{
@@ -324,14 +324,14 @@ export default function PadelClient({
             <button
               onClick={() => mutate()}
               className="p-1 rounded hover:bg-destructive/20 transition-colors"
-              title="Retry"
+              aria-label="Retry"
             >
               <RefreshCw className="w-4 h-4" />
             </button>
             <button
               onClick={() => setDismissedError(true)}
               className="p-1 rounded hover:bg-destructive/20 transition-colors"
-              title="Dismiss"
+              aria-label="Dismiss error"
             >
               <X className="w-4 h-4" />
             </button>
@@ -364,7 +364,7 @@ export default function PadelClient({
               <button
                 onClick={() => mutate()}
                 className="p-1.5 rounded-md hover:bg-muted transition-colors"
-                title="Refresh"
+                aria-label="Refresh availability"
                 disabled={isLoading}
               >
                 <RefreshCw
@@ -455,7 +455,7 @@ export default function PadelClient({
               value={selectedClub}
               onValueChange={(club) => setFilters({ club })}
             >
-              <SelectTrigger className="h-8 text-xs w-full border-border bg-background">
+              <SelectTrigger aria-label="Filter by club" className="h-8 text-xs w-full border-border bg-background">
                 <SelectValue placeholder="All clubs" />
               </SelectTrigger>
               <SelectContent>
