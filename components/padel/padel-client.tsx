@@ -513,7 +513,10 @@ export default function PadelClient({
             clubs={allClubs.filter(
               (c) =>
                 (selectedLocation === "all" || c.location === selectedLocation) &&
-                (selectedClub === "all" || c.name === selectedClub),
+                (selectedClub === "all" || c.name === selectedClub) &&
+                (showAll ||
+                  prefs.clubs.length === 0 ||
+                  prefs.clubs.includes(c.name)),
             )}
           />
         ) : (

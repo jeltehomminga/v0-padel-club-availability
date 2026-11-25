@@ -27,10 +27,11 @@ export const playtomicTenantUrl = (
 }
 
 // shortcut: hand-kept list since Playtomic's tenant search is closed; add new clubs by hand.
-// id is the club's playtomic.com slug.
+// id is the club's playtomic.com slug. Names match Playtomic's exactly (trailing spaces
+// included) so club names saved in preferences still match.
 export const baliClubs: ClubInfo[] = [
   { id: "bam-bam-padel", name: "Bam Bam Padel | Ubud Bali", location: "Ubud" },
-  { id: "bisma-padel", name: "Bisma Padel", location: "Ubud" },
+  { id: "bisma-padel", name: "Bisma Padel ", location: "Ubud" },
   { id: "padel-of-gods", name: "Gods Social Club", location: "Ubud" },
   { id: "kula-mani-tennis-village", name: "Kula Mani Tennis Village", location: "Ubud" },
   { id: "mahima", name: "Mahima Tennis, Padel & Gym", location: "Ubud" },
@@ -41,7 +42,7 @@ export const baliClubs: ClubInfo[] = [
   { id: "kin-urban-ground-sanur", name: "KIN Urban Ground - Sanur", location: "Sanur" },
   { id: "padel-dise-bali", name: "Padel Dise Bali", location: "Sanur" },
   { id: "prime-padel-pickle", name: "Prime Padel & Pickle", location: "Sanur" },
-  { id: "simply-padel-sanur", name: "Simply Padel Sanur", location: "Sanur" },
+  { id: "simply-padel-sanur", name: "Simply Padel Sanur ", location: "Sanur" },
 ]
 
 export const clubWebsites: Record<string, string> = {
