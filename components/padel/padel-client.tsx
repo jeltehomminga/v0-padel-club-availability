@@ -33,6 +33,7 @@ import { FilterChips } from "@/components/padel/filter-chips"
 import { TimeFilter } from "@/components/padel/time-filter"
 import { SlotCard } from "@/components/padel/slot-card"
 import { EmptyState } from "@/components/padel/empty-state"
+import { BookDirect } from "@/components/padel/book-direct"
 import { usePreferences } from "@/hooks/use-preferences"
 
 // Client-side fetch deduplication — prevents duplicate network requests
@@ -506,6 +507,18 @@ export default function PadelClient({
               />
             </div>
           ))
+        ) : timeSlots.length === 0 ? (
+          <BookDirect
+            date={selectedDate}
+            clubs={allClubs.filter(
+              (c) =>
+                (selectedLocation === "all" || c.location === selectedLocation) &&
+                (selectedClub === "all" || c.name === selectedClub) &&
+                (showAll ||
+                  prefs.clubs.length === 0 ||
+                  prefs.clubs.includes(c.name)),
+            )}
+          />
         ) : (
           <EmptyState />
         )}

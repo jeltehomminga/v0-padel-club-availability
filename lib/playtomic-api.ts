@@ -1,6 +1,7 @@
 import { getCourtName, setCourtNames } from "@/lib/court-names"
 import { convertToBaliTime } from "@/lib/time"
 import { serverCache } from "@/lib/cache"
+import { baliClubs } from "@/lib/constants"
 import type {
   PlaytomicApiTenant,
   PlaytomicApiAvailabilityItem,
@@ -28,9 +29,13 @@ const serverFetch = async <T>(
       headers: playtomicHeaders,
       next: { revalidate },
     })
-    if (!res.ok) return null
+    if (!res.ok) {
+      console.error(`[playtomic] ${res.status} ${url}`)
+      return null
+    }
     return res.json()
-  } catch {
+  } catch (error) {
+    console.error(`[playtomic] fetch failed ${url}`, error)
     return null
   }
 }
@@ -57,7 +62,11 @@ const fetchTenantsServer = async (
     const { coord } = serverLocations[location]
     const url = `${playtomicBase}/tenants?coordinate=${coord}&radius=8000&sport_id=PADEL&playtomic_status=ACTIVE&size=500`
     const data = await serverFetch<PlaytomicApiTenant[]>(url, revalidateSeconds)
-    if (!data) return []
+    if (!data) {
+      // Cache the failure too, so a dead host isn't retried (and logged) on every request.
+      serverCache.set(cacheKey, [], 5 * 60 * 1000)
+      return []
+    }
     const result = data.map((tenant: PlaytomicApiTenant) => ({
       id: tenant.tenant_id || tenant.id || "",
       name: tenant.name || tenant.tenant_name || "",
@@ -188,30 +197,16 @@ export function fetchSlotsForDate(date: string): Promise<TimeSlot[]> {
   return promise
 }
 
-/** Club list for preferences; cached 1hr. Call from server component only. */
+/** Club list for preferences and the club filter. */
 export type ClubInfo = {
   id: string
   name: string
   location: "Ubud" | "Sanur"
 }
 
-const ONE_HOUR = 60 * 60
-
+// Static since Playtomic closed its public tenant search (Nov 2026).
 export async function fetchAllClubs(): Promise<ClubInfo[]> {
-  const [ubudTenants, sanurTenants] = await Promise.all([
-    fetchTenantsServer("ubud", ONE_HOUR),
-    fetchTenantsServer("sanur", ONE_HOUR),
-  ])
-  const all = [
-    ...ubudTenants.map((t) => ({ ...t, location: "Ubud" as const })),
-    ...sanurTenants.map((t) => ({ ...t, location: "Sanur" as const })),
-  ]
-  const seen = new Set<string>()
-  return all.filter((t) => {
-    if (seen.has(t.id)) return false
-    seen.add(t.id)
-    return true
-  })
+  return baliClubs
 }
 
 export type PlaytomicTenant = {
